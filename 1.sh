@@ -36,7 +36,7 @@ aws sts get-caller-identity
 # Description: Clone the Terraform configuration from GitHub repository
 
 echo "=== Cloning Terraform Project ==="
-git clone https://github.com/KishorKumarParoi/Mega-Project-Terraform.git
+git clone https://github.com/KishorKumarParoi/Terraform-EKS.git
 cd Mega-Project-Terraform
 
 # ============================================================================
