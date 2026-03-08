@@ -136,37 +136,6 @@ resource "aws_iam_role_policy_attachment" "ebs_csi_driver" {
   role       = aws_iam_role.ebs_csi_driver.name
 }
 
-
-resource "aws_eks_addon" "ebs_csi_driver" {
-  cluster_name             = aws_eks_cluster.kkp.name
-  addon_name               = "aws-ebs-csi-driver"
-  addon_version            = data.aws_eks_addon_version.ebs.version 
-  service_account_role_arn = aws_iam_role.ebs_csi_driver.arn        
-
-  timeouts {
-    create = "10m"   
-    update = "10m"
-    delete = "5m"
-  }
-
-  resolve_conflicts_on_create = "OVERWRITE"
-  resolve_conflicts_on_update = "PRESERVE" 
-
-  lifecycle {
-    prevent_destroy = true
-  }
-
-  depends_on = [
-    aws_eks_cluster.kkp,
-    aws_eks_node_group.kkp,
-    aws_iam_role_policy_attachment.ebs_csi_driver
-  ]
-
-  tags = {
-    Name = "ebs-csi-driver"
-  }
-}
-
 resource "aws_eks_node_group" "kkp" {
   cluster_name    = aws_eks_cluster.kkp.name
   node_group_name = "kkp-node-group"
