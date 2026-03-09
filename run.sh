@@ -21,8 +21,8 @@ sudo ./aws/install
 # Note: Replace with your actual AWS Access Key and Secret Key
 # ⚠️  SECURITY WARNING: Store credentials securely (use IAM roles in production)
 echo "=== Configuring AWS Credentials ==="
-aws configure set aws_access_key_id access_key_id_here
-aws configure set aws_secret_access_key secret_access_key_here
+aws configure set aws_access_key_id accessKeyId1234567890
+aws configure set aws_secret_access_key secretAccessKey1234567890
 aws configure set region us-east-1                        # Primary AWS region
 aws configure set output json                             # Output format
 
@@ -567,3 +567,32 @@ EOF
 
 # Check PVC status
 kubectl get pvc test-pvc
+
+# ============================================================================
+# SECTION 12: ADD HELM REPOSITORIES
+# ============================================================================
+
+# helm install
+sudo apt update -y
+
+ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+chmod 700 get_helm.sh
+./get_helm.sh
+
+echo "=== Adding Helm Repositories ==="
+
+# Add Bitnami charts
+helm repo add bitnami https://charts.bitnami.com/bitnami
+
+# Update all repos
+helm repo update
+
+# Verify repositories
+echo "✓ Available Helm repositories:"
+helm repo list
+
+helm search repo bitnami
+
+helm search repo bitnami/nginx
+
+helm install my-nginx bitnami/nginx
