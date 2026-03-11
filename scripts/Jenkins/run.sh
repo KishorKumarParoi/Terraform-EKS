@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ################################################################################
-# JENKINS + DOCKER INSTALLATION AND SETUP SCRIPT
-# Purpose: Automated installation of Jenkins with Docker integration on Ubuntu
+# JENKINS + DOCKER + TRIVY INSTALLATION AND SETUP SCRIPT
+# Purpose: Automated installation of Jenkins with Docker and Trivy for scanning
 # Prerequisites: Ubuntu/Debian system with sudo access
 ################################################################################
 
@@ -67,7 +67,6 @@ if sudo systemctl is-active --quiet jenkins; then
   echo "✓ Jenkins service is running"
 else
   echo "❌ Jenkins failed to start"
-  sudo systemctl status jenkins
   exit 1
 fi
 
@@ -91,8 +90,9 @@ echo ""
 echo "=== Installing Docker Dependencies ==="
 # ca-certificates: Verify SSL certificates for secure connections
 # curl: Required for downloading Docker GPG key
+# wget: Required for downloading packages
 sudo apt update -y
-sudo apt install -y ca-certificates curl
+sudo apt install -y ca-certificates curl wget gnupg
 
 echo "=== Adding Docker's Official GPG Key ==="
 # Create secure directory for GPG keys
@@ -131,11 +131,12 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin d
 # ============================================================================
 # Description: Enable and start Docker service
 
+echo ""
 echo "=== Starting Docker Service ==="
 sudo systemctl start docker
 
 echo "=== Enabling Docker Service (Auto-start on Reboot) ==="
-sudo systemctl enable docker
+sudo systemctl enable docker > /dev/null 2>&1
 
 echo "=== Verifying Docker Installation ==="
 # Non-interactive verification
@@ -159,10 +160,10 @@ fi
 # ============================================================================
 # SECTION 8: DOCKER GROUP CONFIGURATION FOR JENKINS
 # ============================================================================
-# Description: Configure Docker permissions for Jenkins user
+# Description: Configure Docker permissions for Jenkins user and current user
 
 echo ""
-echo "=== Configuring Docker Permissions for Jenkins ==="
+echo "=== Configuring Docker Permissions ==="
 
 # Create docker group if it doesn't exist
 if ! getent group docker > /dev/null; then
@@ -170,12 +171,14 @@ if ! getent group docker > /dev/null; then
   sudo groupadd docker
 fi
 
+echo "Adding jenkins to docker group..."
+sudo usermod -aG docker jenkins
+
+echo "Adding $USER to docker group..."
+sudo usermod -aG docker $USER
+
 echo ""
 echo "=== Applying Docker Group Changes ==="
-
-# Add to docker group
-sudo usermod -aG docker jenkins
-sudo usermod -aG docker $USER
 
 # Apply changes without breaking script using sg command
 if command -v sg &> /dev/null; then
@@ -185,10 +188,11 @@ else
   # sg not available - just inform user
   echo "⚠️  Run 'newgrp docker' or reboot to activate group changes"
 fi
+
 # ============================================================================
 # SECTION 9: CONFIGURE SUDOERS FOR JENKINS DOCKER ACCESS
 # ============================================================================
-# Description: Allow Jenkins to run Docker commands with sudo (optional)
+# Description: Allow Jenkins to run Docker commands with sudo
 
 echo ""
 echo "=== Configuring Sudoers for Jenkins Docker Access ==="
@@ -272,14 +276,56 @@ echo "=== Verifying Jenkins Docker Permissions ==="
 if sudo -u jenkins docker ps > /dev/null 2>&1; then
   echo "✓ Jenkins user can access Docker successfully"
 else
-  echo "⚠️  Jenkins user cannot access Docker - may need to restart"
-  echo "   This might resolve after system reboot"
+  echo "⚠️  Jenkins user cannot access Docker - may need system reboot"
 fi
 
 # ============================================================================
-# SECTION 13: INSTALLATION COMPLETE
+# SECTION 13: INSTALL TRIVY VULNERABILITY SCANNER
 # ============================================================================
-# Description: Final setup information
+# Description: Install Trivy for container and code vulnerability scanning
+
+echo ""
+echo "=== Installing Trivy Vulnerability Scanner ==="
+# Trivy: Open-source vulnerability scanner for containers and code
+# Used in CI/CD pipelines to scan images and dependencies
+
+echo "=== Adding Trivy GPG Key ==="
+# Download Trivy GPG key for repository verification
+wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | \
+  gpg --dearmor | \
+  sudo tee /usr/share/keyrings/trivy.gpg > /dev/null 2>&1
+
+if [ $? -eq 0 ]; then
+  echo "✓ Trivy GPG key added"
+else
+  echo "⚠️  Failed to add Trivy GPG key - continuing anyway"
+fi
+
+echo "=== Adding Trivy Repository ==="
+# Add Aqua Security Trivy repository
+echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | \
+  sudo tee -a /etc/apt/sources.list.d/trivy.list > /dev/null 2>&1
+
+echo "=== Updating Package Manager (Trivy Repository) ==="
+sudo apt update -y
+
+echo "=== Installing Trivy ==="
+# Install Trivy vulnerability scanner
+sudo apt install -y trivy
+
+# Verify Trivy installation
+echo "=== Verifying Trivy Installation ==="
+if command -v trivy &> /dev/null; then
+  TRIVY_VERSION=$(trivy --version 2>&1 | head -1)
+  echo "✓ Trivy installed: $TRIVY_VERSION"
+else
+  echo "⚠️  Trivy installation may have failed - check manually"
+fi
+
+# ============================================================================
+# SECTION 14: INSTALLATION COMPLETE
+# ============================================================================
+# Description: Final setup information and next steps
 
 echo ""
 echo "============================================================================"
@@ -288,6 +334,11 @@ echo "==========================================================================
 echo ""
 echo "JENKINS ACCESS INFORMATION:"
 echo "  URL: http://${JENKINS_IP}:8080"
+echo ""
+echo "INSTALLED COMPONENTS:"
+echo "  ✓ Jenkins (CI/CD Server)"
+echo "  ✓ Docker (Container Runtime)"
+echo "  ✓ Trivy (Vulnerability Scanner)"
 echo ""
 echo "NEXT STEPS:"
 echo ""
@@ -302,18 +353,23 @@ echo "     - Paste initial admin password"
 echo "     - Install recommended plugins"
 echo "     - Create first admin user"
 echo ""
-echo "DOCKER PERMISSIONS VERIFICATION:"
+echo "DOCKER PERMISSIONS:"
 echo "  - Jenkins user is in docker group: ✓"
 echo "  - Jenkins can run docker commands: ✓"
 echo "  - Docker socket permissions: ✓"
 echo "  - Sudoers configured: ✓"
 echo ""
+echo "TRIVY USAGE:"
+echo "  Scan Docker image: trivy image ubuntu:latest"
+echo "  Scan filesystem: trivy fs /path/to/directory"
+echo "  Scan with JSON output: trivy image -f json ubuntu:latest"
+echo ""
 echo "USEFUL COMMANDS:"
 echo "  Check Jenkins status: sudo systemctl status jenkins"
 echo "  View Jenkins logs: sudo tail -f /var/log/jenkins/jenkins.log"
-echo "  Verify Jenkins can use Docker:"
-echo "    sudo -u jenkins docker ps"
-echo "    sudo -u jenkins docker run hello-world"
+echo "  Verify Jenkins Docker access: sudo -u jenkins docker ps"
+echo "  Check Trivy version: trivy --version"
+echo "  Scan image in Jenkins job: trivy image --severity HIGH,CRITICAL myimage:latest"
 echo ""
 echo "JENKINS + DOCKER INTEGRATION:"
 echo "  1. In Jenkins, install these plugins:"
@@ -325,7 +381,7 @@ echo "  2. Configure Docker in Jenkins:"
 echo "     Manage Jenkins → Configure System → Docker"
 echo "     Docker Host URI: unix:///var/run/docker.sock"
 echo ""
-echo "  3. Use Docker in Jenkinsfile:"
+echo "  3. Use Docker in Jenkinsfile with Trivy scanning:"
 echo "     pipeline {"
 echo "       agent {"
 echo "         docker {"
@@ -336,11 +392,30 @@ echo "       }"
 echo "       stages {"
 echo "         stage('Build') {"
 echo "           steps {"
-echo "             sh 'docker --version'"
+echo "             sh 'docker build -t myapp:latest .'"
+echo "           }"
+echo "         }"
+echo "         stage('Scan') {"
+echo "           steps {"
+echo "             sh 'trivy image --severity HIGH,CRITICAL myapp:latest'"
 echo "           }"
 echo "         }"
 echo "       }"
 echo "     }"
+echo ""
+echo "SECURITY BEST PRACTICES:"
+echo "  1. Change Jenkins admin password immediately"
+echo "  2. Enable Jenkins security options:"
+echo "     Manage Jenkins → Security → Enable CSRF protection"
+echo "  3. Use strong authentication (LDAP, OAuth, etc.)"
+echo "  4. Enable build logs rotation"
+echo "  5. Regularly scan Docker images with Trivy"
+echo "  6. Keep Jenkins plugins updated"
+echo ""
+echo "DOCUMENTATION LINKS:"
+echo "  - Jenkins: https://www.jenkins.io/doc/"
+echo "  - Docker: https://docs.docker.com/"
+echo "  - Trivy: https://aquasecurity.github.io/trivy/"
 echo ""
 echo "============================================================================"
 echo "✓ Script completed successfully!"

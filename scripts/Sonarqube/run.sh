@@ -137,7 +137,7 @@ fi
 # ============================================================================
 # SECTION 5: SONARQUBE ENVIRONMENT SETUP
 # ============================================================================
-# Description: Configure system settings and create directories for SonarQube
+# Description: Configure system settings for SonarQube
 
 echo ""
 echo "=== Setting System Kernel Parameters ==="
@@ -147,16 +147,19 @@ sudo sysctl -w vm.max_map_count=262144 > /dev/null 2>&1
 echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf > /dev/null 2>&1
 echo "✓ Kernel parameters configured"
 
-echo "=== Creating SonarQube Data Directories ==="
-# Create persistent volumes for SonarQube data and Elasticsearch
-sudo mkdir -p /var/lib/sonarqube/data
-sudo mkdir -p /var/lib/sonarqube/logs
-sudo mkdir -p /var/lib/sonarqube/extensions
-sudo mkdir -p /var/lib/sonarqube/conf
+echo ""
+echo "=== Creating Docker Volumes for SonarQube ==="
 
-# Set proper ownership (SonarQube runs as UID 999)
-sudo chown -R 999:999 /var/lib/sonarqube
-echo "✓ SonarQube data directories created and configured"
+# Remove old volumes if they exist
+sudo docker volume rm sonarqube-data sonarqube-logs sonarqube-extensions sonarqube-conf 2>/dev/null || true
+
+# Create named volumes (Docker manages permissions automatically)
+sudo docker volume create sonarqube-data
+sudo docker volume create sonarqube-logs
+sudo docker volume create sonarqube-extensions
+sudo docker volume create sonarqube-conf
+
+echo "✓ Docker volumes created"
 
 # ============================================================================
 # SECTION 6: SONARQUBE CONTAINER DEPLOYMENT
@@ -165,34 +168,28 @@ echo "✓ SonarQube data directories created and configured"
 
 echo ""
 echo "=== Deploying SonarQube Container ==="
-# Deploy SonarQube container with persistent storage
-# -d: Run in detached mode (background)
-# --name sonarqube: Container name for easy reference
-# -p 9000:9000: Map port 9000 (host) to 9000 (container) for web UI
-# -p 9092:9092: Internal port for search engine
-# -v: Mount volumes for persistent data, logs, extensions, and configuration
-# sonarqube:lts-community: Official SonarQube LTS Community Edition image
 
 # Remove existing container if it exists
 sudo docker rm -f sonarqube > /dev/null 2>&1 || true
 
-# Deploy new container
+# Deploy container with named volumes (better permission handling)
 sudo docker run -d \
   --name sonarqube \
   -p 9000:9000 \
   -p 9092:9092 \
   -e sonar.es.bootstrap.checks.disable=true \
   -e sonar.search.javaAdditionalOpts="-Dbootstrap.system_call_filter=false" \
-  -v /var/lib/sonarqube/data:/opt/sonarqube/data \
-  -v /var/lib/sonarqube/logs:/opt/sonarqube/logs \
-  -v /var/lib/sonarqube/extensions:/opt/sonarqube/extensions \
-  -v /var/lib/sonarqube/conf:/opt/sonarqube/conf \
+  -v sonarqube-data:/opt/sonarqube/data \
+  -v sonarqube-logs:/opt/sonarqube/logs \
+  -v sonarqube-extensions:/opt/sonarqube/extensions \
+  -v sonarqube-conf:/opt/sonarqube/conf \
   sonarqube:lts-community > /dev/null 2>&1
 
 if [ $? -eq 0 ]; then
   echo "✓ SonarQube container deployed"
 else
   echo "❌ Failed to deploy SonarQube container"
+  sudo docker logs sonarqube 2>&1 | tail -20
   exit 1
 fi
 
