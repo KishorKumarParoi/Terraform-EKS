@@ -10,6 +10,7 @@
 # SECTION 1: AWS CLI INSTALLATION AND CONFIGURATION
 # ============================================================================
 # Description: Install AWS CLI v2 and configure credentials for AWS access
+sudo apt update && sudo apt install -y curl unzip
 
 echo "=== Installing AWS CLI v2 ==="
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -21,8 +22,8 @@ sudo ./aws/install
 # Note: Replace with your actual AWS Access Key and Secret Key
 # ⚠️  SECURITY WARNING: Store credentials securely (use IAM roles in production)
 echo "=== Configuring AWS Credentials ==="
-aws configure set aws_access_key_id accessKeyId1234567890
-aws configure set aws_secret_access_key secretAccessKey1234567890
+aws configure set aws_access_key_id 
+aws configure set aws_secret_access_key 
 aws configure set region us-east-1                        # Primary AWS region
 aws configure set output json                             # Output format
 
@@ -596,3 +597,5 @@ helm search repo bitnami
 helm search repo bitnami/nginx
 
 helm install my-nginx bitnami/nginx
+
+# helm uninstall my-nginx
