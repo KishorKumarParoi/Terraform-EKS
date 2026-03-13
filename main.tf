@@ -143,13 +143,13 @@ resource "aws_eks_node_group" "kkp" {
   subnet_ids      = aws_subnet.kkp_subnet[*].id
   version         = aws_eks_cluster.kkp.version
 
-  scaling_config {
-    desired_size = 3
-    max_size     = 3
-    min_size     = 3
-  }
+scaling_config {
+  min_size     = 2
+  max_size     = 3
+  desired_size = 2
+}
 
-  instance_types = ["t2.large"]
+  instance_types = ["t2.medium"]
 
   dynamic "remote_access" {
     for_each = var.ssh_key_name != "" ? [1] : []
