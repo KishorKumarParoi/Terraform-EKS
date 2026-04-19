@@ -10,7 +10,7 @@
 # SECTION 1: AWS CLI INSTALLATION AND CONFIGURATION
 # ============================================================================
 # Description: Install AWS CLI v2 and configure credentials for AWS access
-sudo apt update && sudo apt install -y curl unzip
+sudo apt update -y
 
 echo "=== Installing AWS CLI v2 ==="
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -576,9 +576,20 @@ kubectl get pvc test-pvc
 # helm install
 sudo apt update -y
 
- curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
 chmod 700 get_helm.sh
 ./get_helm.sh
+
+# Verify Helm installation
+helm version
+
+# error checking helm version
+if [ $? -eq 0 ]; then
+  echo "✓ Helm installed successfully"
+else
+  echo "❌ Helm installation failed"
+  exit 1
+fi
 
 echo "=== Adding Helm Repositories ==="
 
@@ -598,4 +609,344 @@ helm search repo bitnami/nginx
 
 helm install my-nginx bitnami/nginx
 
+echo "=== Installing Metrics Server ==="
+
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+helm install metrics-server metrics-server/metrics-server \
+  -n kube-system
+
+# Wait for deployment
+kubectl rollout status deployment/metrics-server -n kube-system
+
+echo "✓ Metrics Server installed"
+kubectl top node
+
 # helm uninstall my-nginx
+
+# ============================================================================
+# SECTION 13: CREATE KUBERNETES RBAC AND SERVICE ACCOUNT MANIFESTS
+# ============================================================================
+# Description: Create separate YAML files for namespace, service account, role, and rolebinding
+
+echo ""
+echo "=== Creating Kubernetes RBAC Manifests ==="
+
+# Create directory for Kubernetes manifests
+mkdir -p ~/kubernetes-manifests
+
+# 1. Create Namespace file
+cat > ~/kubernetes-manifests/01-namespace.yaml <<'EOF'
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: webapps
+  labels:
+    name: webapps
+EOF
+echo "✓ Created: ~/kubernetes-manifests/01-namespace.yaml"
+
+# 2. Create ServiceAccount file
+cat > ~/kubernetes-manifests/02-serviceaccount.yaml <<'EOF'
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins
+  namespace: webapps
+  labels:
+    app: jenkins
+EOF
+echo "✓ Created: ~/kubernetes-manifests/02-serviceaccount.yaml"
+
+# 3. Create Role file
+cat > ~/kubernetes-manifests/03-role.yaml <<'EOF'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jenkins-role
+  namespace: webapps
+  labels:
+    app: jenkins
+rules:
+  # Permissions for core API resources
+  - apiGroups: [""]
+    resources:
+      - secrets
+      - configmaps
+      - persistentvolumeclaims
+      - services
+      - pods
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+
+  # Permissions for apps API group
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+
+  # Permissions for networking API group
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+
+  # Permissions for autoscaling API group
+  - apiGroups: ["autoscaling"]
+    resources:
+      - horizontalpodautoscalers
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+EOF
+echo "✓ Created: ~/kubernetes-manifests/03-role.yaml"
+
+# 4. Create RoleBinding file
+cat > ~/kubernetes-manifests/04-rolebinding.yaml <<'EOF'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jenkins-rolebinding
+  namespace: webapps
+  labels:
+    app: jenkins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jenkins-role
+subjects:
+  - kind: ServiceAccount
+    name: jenkins
+    namespace: webapps
+EOF
+echo "✓ Created: ~/kubernetes-manifests/04-rolebinding.yaml"
+
+# 5. Create ClusterRole file
+cat > ~/kubernetes-manifests/05-clusterrole.yaml <<'EOF'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: jenkins-cluster-role
+rules:
+  # Permissions for persistentvolumes
+  - apiGroups: [""]
+    resources:
+      - persistentvolumes
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  # Permissions for storageclasses
+  - apiGroups: ["storage.k8s.io"]
+    resources:
+      - storageclasses
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  # Permissions for ClusterIssuer (cert-manager)
+  - apiGroups: ["cert-manager.io"]
+    resources:
+      - clusterissuers
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+EOF
+echo "✓ Created: ~/kubernetes-manifests/05-clusterrole.yaml"
+
+# 6. Create ClusterRoleBinding file
+cat > ~/kubernetes-manifests/06-clusterrolebinding.yaml <<'EOF'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jenkins-cluster-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: jenkins-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: jenkins
+    namespace: webapps
+EOF
+echo "✓ Created: ~/kubernetes-manifests/06-clusterrolebinding.yaml"
+
+# 7. Create Secret file for service account token
+cat > ~/kubernetes-manifests/07-secret.yaml <<'EOF'
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: jenkins-token
+  namespace: webapps
+  annotations:
+    kubernetes.io/service-account.name: jenkins
+EOF
+echo "✓ Created: ~/kubernetes-manifests/07-secret.yaml"
+
+# Apply all manifests in order
+echo ""
+echo "=== Applying RBAC Manifests ==="
+kubectl apply -f ~/kubernetes-manifests/01-namespace.yaml
+kubectl apply -f ~/kubernetes-manifests/02-serviceaccount.yaml
+kubectl apply -f ~/kubernetes-manifests/03-role.yaml
+kubectl apply -f ~/kubernetes-manifests/04-rolebinding.yaml
+kubectl apply -f ~/kubernetes-manifests/05-clusterrole.yaml
+kubectl apply -f ~/kubernetes-manifests/06-clusterrolebinding.yaml
+kubectl apply -f ~/kubernetes-manifests/07-secret.yaml
+
+if [ $? -eq 0 ]; then
+  echo "✓ All RBAC manifests applied successfully"
+else
+  echo "❌ Failed to apply some manifests"
+  exit 1
+fi
+
+# Verify all resources
+echo ""
+echo "=== Verifying RBAC Resources ==="
+
+echo ""
+echo "Namespace:"
+kubectl get namespace webapps
+
+echo ""
+echo "Service Account:"
+kubectl get serviceaccount jenkins -n webapps
+
+echo ""
+echo "Role:"
+kubectl get role jenkins-role -n webapps
+
+echo ""
+echo "RoleBinding:"
+kubectl get rolebinding jenkins-rolebinding -n webapps
+
+echo ""
+echo "ClusterRole:"
+kubectl get clusterrole jenkins-cluster-role
+
+echo ""
+echo "ClusterRoleBinding:"
+kubectl get clusterrolebinding jenkins-cluster-rolebinding
+
+echo ""
+echo "Secret:"
+kubectl get secret jenkins-token -n webapps
+
+echo ""
+echo "=== RBAC Files Location ==="
+ls -lah ~/kubernetes-manifests/
+
+echo ""
+echo "=== Service Account Token ==="
+kubectl get secret jenkins-token -n webapps -o jsonpath='{.data.token}' | base64 -d | head -c 50
+echo "..."
+echo ""
+echo "✓ All RBAC resources created and verified successfully!"
+
+
+# Save secret description in base64
+echo ""
+echo "=== Saving Secret Description in Base64 ==="
+
+# Method 1: Save full description to file (base64 encoded)
+kubectl describe secret jenkins-token -n webapps | base64 > ~/kubernetes-manifests/jenkins-token-description.b64
+echo "✓ Saved: ~/kubernetes-manifests/jenkins-token-description.b64"
+
+# Method 2: Decode to view
+echo ""
+echo "Base64 Encoded Secret Description:"
+cat ~/kubernetes-manifests/jenkins-token-description.b64
+
+# Method 3: View the actual secret token (already base64, decode it)
+echo ""
+echo "=== Jenkins Token (Decoded) ==="
+kubectl get secret jenkins-token -n webapps -o jsonpath='{.data.token}' | base64 -d
+
+# Method 4: Save token separately
+kubectl get secret jenkins-token -n webapps -o jsonpath='{.data.token}' | base64 -d > ~/kubernetes-manifests/jenkins-token.txt
+echo ""
+echo "✓ Token saved to: ~/kubernetes-manifests/jenkins-token.txt"
+
+# Method 5: Save entire secret as base64 YAML
+kubectl get secret jenkins-token -n webapps -o yaml | base64 > ~/kubernetes-manifests/jenkins-token-secret.yaml.b64
+echo "✓ Full secret saved: ~/kubernetes-manifests/jenkins-token-secret.yaml.b64"
+
+echo ""
+echo "=== Files Created ==="
+ls -lah ~/kubernetes-manifests/jenkins-token*
+
+git config --global user.email kishor.ruet.cse@gmail.com
+git config --global user.name Kishorkumarparoi
+
+cd ~/Boardgame
+mkdir -p k8s
+cp ~/kubernetes-manifests/*.yaml k8s/
+
+# Push to GitHub
+git add k8s/
+git commit -m "Add Kubernetes deployment manifests"
+git push origin main
+
+# Detailed view of all instances
+aws ec2 describe-instances \
+  --region us-east-1 \
+  --filters "Name=instance-state-name,Values=running" \
+  --query 'Reservations[*].Instances[*].[InstanceId, Tags[?Key==`Name`].Value|[0], InstanceType, PrivateIpAddress, PublicIpAddress, LaunchTime, State.Name]' \
+  --output table
+
+  # Show all EKS worker nodes with their EC2 instance details
+aws ec2 describe-instances \
+  --region us-east-1 \
+  --filters "Name=tag:eks:cluster-name,Values=kkp-cluster" \
+  --query 'Reservations[*].Instances[*].[InstanceId, InstanceType, PrivateIpAddress, PublicIpAddress, State.Name, LaunchTime, Tags[?Key==`Name`].Value|[0]]' \
+  --output table
+
+
+
+# now go to jenkins and install these plugins:
+# Pipeline stage view
+# SonarQube Scanner 
+# Docker Pipeline
+# Kubernetes CLI 
+# Maven Integration 
+# Config File Provider 
+# Pipeline Maven Integration 
+# eclipse temurin installer
+# webhook trigger 
+
+# create sonar-server (jenkins system), sonarqube-webhook (sonarqub configuration),
+# git cred, docker, sonar-token (jenkins credential)
+# then setup maven, jdk, sonar-scanner in jenkins global tool configuration
+# update pom.xml <distributionManagement> file with nexus maven releases and snapshots repository link
+# write global config files adding 
+# <servers>
+    #  <server>
+    #   <id>maven-releases</id>
+    #   <username>admin</username>
+    #   <password>admin123</password>
+    # </server>
+    
+    #  <server>
+    #   <id>maven-snapshots</id>
+    #   <username>admin</username>
+    #   <password>admin123</password>
+    # </server>
+
+    # <server>
+    #   <id>maven-proxy-repo</id>
+    #   <username>admin</username>
+    #   <password>admin123</password>
+    # </server>
+# </servers>
+# <mirrors>
+  #   <mirror>
+  #     <id>nexus</id>
+  #     <mirrorOf>*</mirrorOf>
+  #     <name>Human Readable Name for this Mirror.</name>
+  #     <url> http://3.235.232.192:8081/repository/maven-proxy-repo/</url>
+  #   </mirror>
+# </mirrors>
+
+# add sepereated bind credentials for git
+# setup smtp gmail server
+# generic webhook trigger for sonarqube-webhook
+  # post content params:
+    #  ref, $.ref, webhook-trigger secret text token cred
+    # http://54.160.39.177:8080/generic-webhook-trigger/invoke?token=kishorparoi
+
+# now write pipeline script 
+# total cred: sonar-token, git, docker-cred, mail-cred, webhook-trigger
+
+# scp -i /Users/kishorkumarparoi/Desktop/DevOps/kkp.pem -r ./k8s ubuntu@44.200.209.123:~/
