@@ -1,0 +1,43 @@
+# Cost-Optimized Configuration for Development Environment
+# Expected cost: $40-50/month
+
+aws_region   = "us-east-1"
+cluster_name = "kkp-cluster"
+
+# VPC Configuration
+vpc_cidr_block = "10.0.0.0/16"
+subnet_count   = 2
+
+# Node Group - COST OPTIMIZED
+node_group_min_size     = 1              # Single node for dev
+node_group_desired_size = 1
+node_group_max_size     = 3              # Can scale up under load
+node_instance_types     = ["t3.small"]   # Smaller size (50% cheaper)
+node_disk_size          = 20             # Minimum disk
+
+# Cost Optimization Features
+enable_spot_instances        = true      # Save 60-70% on EC2 (Spot can be interrupted)
+enable_cost_optimization     = true      # Enable all cost features
+use_smaller_instance_types   = true      # Use t3.small instead of t3.medium
+max_spot_price               = ""        # Use default spot price
+
+# Logging - MINIMAL for cost savings
+cluster_log_types      = ["api"]         # Only API logs (critical)
+enable_detailed_logging = false
+log_retention_days     = 7               # Keep logs for 1 week only
+
+# Kubernetes Version (keep stable)
+kubernetes_version = "1.29"
+
+# SSH Access (optional)
+enable_ssh_access  = false               # Disable for security
+ssh_key_name       = ""
+
+# Tags
+common_tags = {
+  Terraform   = "true"
+  Environment = "development"
+  Project     = "Mega-Project"
+  ManagedBy   = "Terraform"
+  CostCenter  = "Engineering"
+}

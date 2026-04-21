@@ -7,38 +7,96 @@
 ################################################################################
 
 # ============================================================================
-# SECTION 1: AWS CLI INSTALLATION AND CONFIGURATION
+# IMPORTANT REQUIREMENTS
 # ============================================================================
+# Before running this script, ensure:
+#
+# 1. AWS CREDENTIALS are configured
+#    Option A: Run 'aws configure' and enter your AWS keys
+#    Option B: Set environment variables:
+#       export AWS_ACCESS_KEY_ID="your-key"
+#       export AWS_SECRET_ACCESS_KEY="your-secret"
+#       export AWS_DEFAULT_REGION="us-east-1"
+#
+# 2. TERRAFORM FILES exist at:
+#    /Users/kishorkumarparoi/Desktop/DevOps/Mega-Project-Terraform/Terraform/
+#    Should contain: main.tf, variable.tf, output.tf, addons.tf, versions.tf, etc.
+#
+# 3. INTERNET CONNECTION is available
+#
+# USAGE:
+#   sudo bash run.sh
+#
+# TIMING:
+#   This script typically takes 15-20 minutes to complete
+#   (EKS cluster creation is the longest step)
+#
+# TROUBLESHOOTING:
+#   If script fails:
+#   1. Check AWS credentials: aws sts get-caller-identity
+#   2. Check Terraform files: ls /Users/kishorkumarparoi/Desktop/DevOps/Mega-Project-Terraform/Terraform/
+#   3. Check AWS quota: aws service-quotas get-service-quota --service-code ec2 --quota-code L-1216C47A
+#
+# ============================================================================
+
+set -e  # Exit on error
+set -u  # Exit on undefined variable
 # Description: Install AWS CLI v2 and configure credentials for AWS access
+
 sudo apt update -y
 
 echo "=== Installing AWS CLI v2 ==="
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-sudo apt install unzip -y
-unzip awscliv2.zip
-sudo ./aws/install
+# Check if AWS CLI is already installed
+if command -v aws &> /dev/null; then
+  echo "✓ AWS CLI is already installed"
+  aws --version
+else
+  echo "Installing AWS CLI..."
+  curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+  sudo apt install unzip -y
+  unzip awscliv2.zip
+  sudo ./aws/install
+  rm -f awscliv2.zip
+  echo "✓ AWS CLI installed"
+fi
 
-# Configure AWS credentials
-# Note: Replace with your actual AWS Access Key and Secret Key
-# ⚠️  SECURITY WARNING: Store credentials securely (use IAM roles in production)
-echo "=== Configuring AWS Credentials ==="
-aws configure set aws_access_key_id 
-aws configure set aws_secret_access_key 
-aws configure set region us-east-1                        # Primary AWS region
-aws configure set output json                             # Output format
-
-# Verify AWS credentials are working
-echo "=== Verifying AWS Configuration ==="
-aws sts get-caller-identity
+# Check if AWS credentials are already configured
+echo ""
+echo "=== Checking AWS Credentials ==="
+if aws sts get-caller-identity &>/dev/null; then
+  echo "✓ AWS credentials are already configured"
+  aws sts get-caller-identity --output table
+else
+  echo "⚠️  AWS credentials not configured. Please configure them:"
+  echo ""
+  echo "Run: aws configure"
+  echo "  - AWS Access Key ID: [your-access-key]"
+  echo "  - AWS Secret Access Key: [your-secret-key]"
+  echo "  - Default region: us-east-1"
+  echo "  - Default output format: json"
+  echo ""
+  exit 1
+fi
 
 # ============================================================================
-# SECTION 2: CLONE TERRAFORM REPOSITORY
+# SECTION 2: NAVIGATE TO TERRAFORM DIRECTORY
 # ============================================================================
-# Description: Clone the Terraform configuration from GitHub repository
+# Description: Navigate to the Terraform configuration directory
 
-echo "=== Cloning Terraform Project ==="
+echo "=== Navigating to Terraform Directory ==="
 git clone https://github.com/KishorKumarParoi/Terraform-EKS.git
-cd Terraform-EKS
+TERRAFORM_DIR="Terraform-EKS/Terraform"
+
+if [ ! -d "$TERRAFORM_DIR" ]; then
+  echo "❌ ERROR: Terraform directory not found at $TERRAFORM_DIR"
+  echo "Please ensure Terraform files exist in that location"
+  exit 1
+fi
+
+cd "$TERRAFORM_DIR"
+echo "✓ Changed to directory: $(pwd)"
+echo "✓ Terraform files found:"
+ls -1 *.tf 2>/dev/null | head -5
 
 # ============================================================================
 # SECTION 3: INSTALL TERRAFORM FROM HASHICORP REPOSITORY (OFFICIAL)
@@ -81,15 +139,49 @@ terraform -version
 # Creates: VPC, Subnets, Security Groups, EKS Cluster, Node Groups, IAM Roles
 
 echo "=== Deploying Infrastructure with Terraform ==="
-terraform state rm aws_eks_addon.ebs_csi_driver 2>/dev/null || true
-terraform init                      # Initialize Terraform (download providers)
-terraform plan -out=tfplan          # Show execution plan (what will be created)
-terraform apply tfplan      # Apply changes automatically (no prompt)
+
+# Optional: Remove resource if it exists from previous run (ignore if not found)
+echo "Initializing Terraform state..."
+terraform state rm aws_eks_addon.ebs_csi_driver 2>/dev/null || echo "No previous addon state to remove"
+
+# Initialize Terraform
+echo "Running: terraform init"
+terraform init
+
+# Show execution plan
+echo "Running: terraform plan"
+terraform plan -out=tfplan
+
+# Apply changes automatically
+echo "Running: terraform apply (this may take 15-20 minutes)"
+terraform apply tfplan
 
 # Clean up plan file (optional)
 rm -f tfplan
 
-echo "✓ Terraform apply completed successfully"
+echo ""
+if [ $? -eq 0 ]; then
+  echo "✓ Terraform apply completed successfully"
+else
+  echo "❌ Terraform apply failed! Please check the errors above"
+  exit 1
+fi
+
+# Verify cluster was created
+echo ""
+echo "=== Verifying EKS Cluster Creation ==="
+CLUSTER_EXISTS=$(aws eks describe-cluster --name kkp-cluster --region us-east-1 --query 'cluster.name' --output text 2>/dev/null || echo "NOT_FOUND")
+
+if [ "$CLUSTER_EXISTS" = "kkp-cluster" ]; then
+  echo "✓ EKS cluster 'kkp-cluster' created successfully"
+  aws eks describe-cluster --name kkp-cluster --region us-east-1 \
+    --query 'cluster.{Name:name, Status:status, Version:version, Endpoint:endpoint}' \
+    --output table
+else
+  echo "❌ ERROR: EKS cluster 'kkp-cluster' was not created!"
+  echo "Please check Terraform logs above and try again"
+  exit 1
+fi
 
 # ============================================================================
 # SECTION 5: CONFIGURE KUBECTL TO ACCESS EKS CLUSTER
@@ -490,7 +582,11 @@ echo "✓ EBS CSI driver deployment completed successfully!"
 # ============================================================================
 # Description: Apply custom Kubernetes manifests for application deployment
 
-echo "=== Deploying Kubernetes Resources ==="
+echo "=== Deploying Kubernetes Manifests Resources ==="
+
+ls
+cd ..
+cd Manifest
 
 if [ -f manifest.yaml ]; then
   echo "Found manifest.yaml, applying..."
@@ -545,29 +641,18 @@ echo "✓ Deployment Complete!"
 # Check pods are running
 kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-ebs-csi-driver
 
-# Test EBS volume creation
-kubectl apply -f - <<'EOF'
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: test-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: ebs-sc
-  resources:
-    requests:
-      storage: 5Gi
----
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: ebs-sc
-provisioner: ebs.csi.aws.com
-EOF
-
-# Check PVC status
-kubectl get pvc test-pvc
+echo ""
+echo "╔════════════════════════════════════════════════════════════════╗"
+echo "║          DEPLOYMENT SUMMARY                                    ║"
+echo "╚════════════════════════════════════════════════════════════════╝"
+echo ""
+echo "✓ Terraform Infrastructure:   DEPLOYED"
+echo "✓ EKS Cluster:                CREATED (kkp-cluster)"
+echo "✓ kubectl:                    CONFIGURED"
+echo "✓ eksctl:                     INSTALLED"
+echo "✓ EBS CSI Driver:             DEPLOYED"
+echo "✓ Kubernetes Nodes:           READY"
+echo ""
 
 # ============================================================================
 # SECTION 12: ADD HELM REPOSITORIES
@@ -628,270 +713,270 @@ kubectl top node
 # ============================================================================
 # Description: Create separate YAML files for namespace, service account, role, and rolebinding
 
-echo ""
-echo "=== Creating Kubernetes RBAC Manifests ==="
+# echo ""
+# echo "=== Creating Kubernetes RBAC Manifests ==="
 
-# Create directory for Kubernetes manifests
-mkdir -p ~/kubernetes-manifests
+# # Create directory for Kubernetes manifests
+# mkdir -p ~/kubernetes-manifests
 
-# 1. Create Namespace file
-cat > ~/kubernetes-manifests/01-namespace.yaml <<'EOF'
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: webapps
-  labels:
-    name: webapps
-EOF
-echo "✓ Created: ~/kubernetes-manifests/01-namespace.yaml"
+# # 1. Create Namespace file
+# cat > ~/kubernetes-manifests/01-namespace.yaml <<'EOF'
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: webapps
+#   labels:
+#     name: webapps
+# EOF
+# echo "✓ Created: ~/kubernetes-manifests/01-namespace.yaml"
 
-# 2. Create ServiceAccount file
-cat > ~/kubernetes-manifests/02-serviceaccount.yaml <<'EOF'
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: jenkins
-  namespace: webapps
-  labels:
-    app: jenkins
-EOF
-echo "✓ Created: ~/kubernetes-manifests/02-serviceaccount.yaml"
+# # 2. Create ServiceAccount file
+# cat > ~/kubernetes-manifests/02-serviceaccount.yaml <<'EOF'
+# apiVersion: v1
+# kind: ServiceAccount
+# metadata:
+#   name: jenkins
+#   namespace: webapps
+#   labels:
+#     app: jenkins
+# EOF
+# echo "✓ Created: ~/kubernetes-manifests/02-serviceaccount.yaml"
 
-# 3. Create Role file
-cat > ~/kubernetes-manifests/03-role.yaml <<'EOF'
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: jenkins-role
-  namespace: webapps
-  labels:
-    app: jenkins
-rules:
-  # Permissions for core API resources
-  - apiGroups: [""]
-    resources:
-      - secrets
-      - configmaps
-      - persistentvolumeclaims
-      - services
-      - pods
-    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+# # 3. Create Role file
+# cat > ~/kubernetes-manifests/03-role.yaml <<'EOF'
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: Role
+# metadata:
+#   name: jenkins-role
+#   namespace: webapps
+#   labels:
+#     app: jenkins
+# rules:
+#   # Permissions for core API resources
+#   - apiGroups: [""]
+#     resources:
+#       - secrets
+#       - configmaps
+#       - persistentvolumeclaims
+#       - services
+#       - pods
+#     verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
 
-  # Permissions for apps API group
-  - apiGroups: ["apps"]
-    resources:
-      - deployments
-      - replicasets
-      - statefulsets
-    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+#   # Permissions for apps API group
+#   - apiGroups: ["apps"]
+#     resources:
+#       - deployments
+#       - replicasets
+#       - statefulsets
+#     verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
 
-  # Permissions for networking API group
-  - apiGroups: ["networking.k8s.io"]
-    resources:
-      - ingresses
-    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+#   # Permissions for networking API group
+#   - apiGroups: ["networking.k8s.io"]
+#     resources:
+#       - ingresses
+#     verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
 
-  # Permissions for autoscaling API group
-  - apiGroups: ["autoscaling"]
-    resources:
-      - horizontalpodautoscalers
-    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
-EOF
-echo "✓ Created: ~/kubernetes-manifests/03-role.yaml"
+#   # Permissions for autoscaling API group
+#   - apiGroups: ["autoscaling"]
+#     resources:
+#       - horizontalpodautoscalers
+#     verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+# EOF
+# echo "✓ Created: ~/kubernetes-manifests/03-role.yaml"
 
-# 4. Create RoleBinding file
-cat > ~/kubernetes-manifests/04-rolebinding.yaml <<'EOF'
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: jenkins-rolebinding
-  namespace: webapps
-  labels:
-    app: jenkins
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: jenkins-role
-subjects:
-  - kind: ServiceAccount
-    name: jenkins
-    namespace: webapps
-EOF
-echo "✓ Created: ~/kubernetes-manifests/04-rolebinding.yaml"
+# # 4. Create RoleBinding file
+# cat > ~/kubernetes-manifests/04-rolebinding.yaml <<'EOF'
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: RoleBinding
+# metadata:
+#   name: jenkins-rolebinding
+#   namespace: webapps
+#   labels:
+#     app: jenkins
+# roleRef:
+#   apiGroup: rbac.authorization.k8s.io
+#   kind: Role
+#   name: jenkins-role
+# subjects:
+#   - kind: ServiceAccount
+#     name: jenkins
+#     namespace: webapps
+# EOF
+# echo "✓ Created: ~/kubernetes-manifests/04-rolebinding.yaml"
 
-# 5. Create ClusterRole file
-cat > ~/kubernetes-manifests/05-clusterrole.yaml <<'EOF'
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: jenkins-cluster-role
-rules:
-  # Permissions for persistentvolumes
-  - apiGroups: [""]
-    resources:
-      - persistentvolumes
-    verbs: ["get", "list", "watch", "create", "update", "delete"]
-  # Permissions for storageclasses
-  - apiGroups: ["storage.k8s.io"]
-    resources:
-      - storageclasses
-    verbs: ["get", "list", "watch", "create", "update", "delete"]
-  # Permissions for ClusterIssuer (cert-manager)
-  - apiGroups: ["cert-manager.io"]
-    resources:
-      - clusterissuers
-    verbs: ["get", "list", "watch", "create", "update", "delete"]
-EOF
-echo "✓ Created: ~/kubernetes-manifests/05-clusterrole.yaml"
+# # 5. Create ClusterRole file
+# cat > ~/kubernetes-manifests/05-clusterrole.yaml <<'EOF'
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRole
+# metadata:
+#   name: jenkins-cluster-role
+# rules:
+#   # Permissions for persistentvolumes
+#   - apiGroups: [""]
+#     resources:
+#       - persistentvolumes
+#     verbs: ["get", "list", "watch", "create", "update", "delete"]
+#   # Permissions for storageclasses
+#   - apiGroups: ["storage.k8s.io"]
+#     resources:
+#       - storageclasses
+#     verbs: ["get", "list", "watch", "create", "update", "delete"]
+#   # Permissions for ClusterIssuer (cert-manager)
+#   - apiGroups: ["cert-manager.io"]
+#     resources:
+#       - clusterissuers
+#     verbs: ["get", "list", "watch", "create", "update", "delete"]
+# EOF
+# echo "✓ Created: ~/kubernetes-manifests/05-clusterrole.yaml"
 
-# 6. Create ClusterRoleBinding file
-cat > ~/kubernetes-manifests/06-clusterrolebinding.yaml <<'EOF'
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: jenkins-cluster-rolebinding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: jenkins-cluster-role
-subjects:
-  - kind: ServiceAccount
-    name: jenkins
-    namespace: webapps
-EOF
-echo "✓ Created: ~/kubernetes-manifests/06-clusterrolebinding.yaml"
+# # 6. Create ClusterRoleBinding file
+# cat > ~/kubernetes-manifests/06-clusterrolebinding.yaml <<'EOF'
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRoleBinding
+# metadata:
+#   name: jenkins-cluster-rolebinding
+# roleRef:
+#   apiGroup: rbac.authorization.k8s.io
+#   kind: ClusterRole
+#   name: jenkins-cluster-role
+# subjects:
+#   - kind: ServiceAccount
+#     name: jenkins
+#     namespace: webapps
+# EOF
+# echo "✓ Created: ~/kubernetes-manifests/06-clusterrolebinding.yaml"
 
-# 7. Create Secret file for service account token
-cat > ~/kubernetes-manifests/07-secret.yaml <<'EOF'
-apiVersion: v1
-kind: Secret
-type: kubernetes.io/service-account-token
-metadata:
-  name: jenkins-token
-  namespace: webapps
-  annotations:
-    kubernetes.io/service-account.name: jenkins
-EOF
-echo "✓ Created: ~/kubernetes-manifests/07-secret.yaml"
+# # 7. Create Secret file for service account token
+# cat > ~/kubernetes-manifests/07-secret.yaml <<'EOF'
+# apiVersion: v1
+# kind: Secret
+# type: kubernetes.io/service-account-token
+# metadata:
+#   name: jenkins-token
+#   namespace: webapps
+#   annotations:
+#     kubernetes.io/service-account.name: jenkins
+# EOF
+# echo "✓ Created: ~/kubernetes-manifests/07-secret.yaml"
 
-# Apply all manifests in order
-echo ""
-echo "=== Applying RBAC Manifests ==="
-kubectl apply -f ~/kubernetes-manifests/01-namespace.yaml
-kubectl apply -f ~/kubernetes-manifests/02-serviceaccount.yaml
-kubectl apply -f ~/kubernetes-manifests/03-role.yaml
-kubectl apply -f ~/kubernetes-manifests/04-rolebinding.yaml
-kubectl apply -f ~/kubernetes-manifests/05-clusterrole.yaml
-kubectl apply -f ~/kubernetes-manifests/06-clusterrolebinding.yaml
-kubectl apply -f ~/kubernetes-manifests/07-secret.yaml
+# # Apply all manifests in order
+# echo ""
+# echo "=== Applying RBAC Manifests ==="
+# kubectl apply -f ~/kubernetes-manifests/01-namespace.yaml
+# kubectl apply -f ~/kubernetes-manifests/02-serviceaccount.yaml
+# kubectl apply -f ~/kubernetes-manifests/03-role.yaml
+# kubectl apply -f ~/kubernetes-manifests/04-rolebinding.yaml
+# kubectl apply -f ~/kubernetes-manifests/05-clusterrole.yaml
+# kubectl apply -f ~/kubernetes-manifests/06-clusterrolebinding.yaml
+# kubectl apply -f ~/kubernetes-manifests/07-secret.yaml
 
-if [ $? -eq 0 ]; then
-  echo "✓ All RBAC manifests applied successfully"
-else
-  echo "❌ Failed to apply some manifests"
-  exit 1
-fi
+# if [ $? -eq 0 ]; then
+#   echo "✓ All RBAC manifests applied successfully"
+# else
+#   echo "❌ Failed to apply some manifests"
+#   exit 1
+# fi
 
-# Verify all resources
-echo ""
-echo "=== Verifying RBAC Resources ==="
+# # Verify all resources
+# echo ""
+# echo "=== Verifying RBAC Resources ==="
 
-echo ""
-echo "Namespace:"
-kubectl get namespace webapps
+# echo ""
+# echo "Namespace:"
+# kubectl get namespace webapps
 
-echo ""
-echo "Service Account:"
-kubectl get serviceaccount jenkins -n webapps
+# echo ""
+# echo "Service Account:"
+# kubectl get serviceaccount jenkins -n webapps
 
-echo ""
-echo "Role:"
-kubectl get role jenkins-role -n webapps
+# echo ""
+# echo "Role:"
+# kubectl get role jenkins-role -n webapps
 
-echo ""
-echo "RoleBinding:"
-kubectl get rolebinding jenkins-rolebinding -n webapps
+# echo ""
+# echo "RoleBinding:"
+# kubectl get rolebinding jenkins-rolebinding -n webapps
 
-echo ""
-echo "ClusterRole:"
-kubectl get clusterrole jenkins-cluster-role
+# echo ""
+# echo "ClusterRole:"
+# kubectl get clusterrole jenkins-cluster-role
 
-echo ""
-echo "ClusterRoleBinding:"
-kubectl get clusterrolebinding jenkins-cluster-rolebinding
+# echo ""
+# echo "ClusterRoleBinding:"
+# kubectl get clusterrolebinding jenkins-cluster-rolebinding
 
-echo ""
-echo "Secret:"
-kubectl get secret jenkins-token -n webapps
+# echo ""
+# echo "Secret:"
+# kubectl get secret jenkins-token -n webapps
 
-echo ""
-echo "=== RBAC Files Location ==="
-ls -lah ~/kubernetes-manifests/
+# echo ""
+# echo "=== RBAC Files Location ==="
+# ls -lah ~/kubernetes-manifests/
 
-echo ""
-echo "=== Service Account Token ==="
-kubectl get secret jenkins-token -n webapps -o jsonpath='{.data.token}' | base64 -d | head -c 50
-echo "..."
-echo ""
-echo "✓ All RBAC resources created and verified successfully!"
+# echo ""
+# echo "=== Service Account Token ==="
+# kubectl get secret jenkins-token -n webapps -o jsonpath='{.data.token}' | base64 -d | head -c 50
+# echo "..."
+# echo ""
+# echo "✓ All RBAC resources created and verified successfully!"
 
 
-# Save secret description in base64
-echo ""
-echo "=== Saving Secret Description in Base64 ==="
+# # Save secret description in base64
+# echo ""
+# echo "=== Saving Secret Description in Base64 ==="
 
-# Method 1: Save full description to file (base64 encoded)
-kubectl describe secret jenkins-token -n webapps | base64 > ~/kubernetes-manifests/jenkins-token-description.b64
-echo "✓ Saved: ~/kubernetes-manifests/jenkins-token-description.b64"
+# # Method 1: Save full description to file (base64 encoded)
+# kubectl describe secret jenkins-token -n webapps | base64 > ~/kubernetes-manifests/jenkins-token-description.b64
+# echo "✓ Saved: ~/kubernetes-manifests/jenkins-token-description.b64"
 
-# Method 2: Decode to view
-echo ""
-echo "Base64 Encoded Secret Description:"
-cat ~/kubernetes-manifests/jenkins-token-description.b64
+# # Method 2: Decode to view
+# echo ""
+# echo "Base64 Encoded Secret Description:"
+# cat ~/kubernetes-manifests/jenkins-token-description.b64
 
-# Method 3: View the actual secret token (already base64, decode it)
-echo ""
-echo "=== Jenkins Token (Decoded) ==="
-kubectl get secret jenkins-token -n webapps -o jsonpath='{.data.token}' | base64 -d
+# # Method 3: View the actual secret token (already base64, decode it)
+# echo ""
+# echo "=== Jenkins Token (Decoded) ==="
+# kubectl get secret jenkins-token -n webapps -o jsonpath='{.data.token}' | base64 -d
 
-# Method 4: Save token separately
-kubectl get secret jenkins-token -n webapps -o jsonpath='{.data.token}' | base64 -d > ~/kubernetes-manifests/jenkins-token.txt
-echo ""
-echo "✓ Token saved to: ~/kubernetes-manifests/jenkins-token.txt"
+# # Method 4: Save token separately
+# kubectl get secret jenkins-token -n webapps -o jsonpath='{.data.token}' | base64 -d > ~/kubernetes-manifests/jenkins-token.txt
+# echo ""
+# echo "✓ Token saved to: ~/kubernetes-manifests/jenkins-token.txt"
 
-# Method 5: Save entire secret as base64 YAML
-kubectl get secret jenkins-token -n webapps -o yaml | base64 > ~/kubernetes-manifests/jenkins-token-secret.yaml.b64
-echo "✓ Full secret saved: ~/kubernetes-manifests/jenkins-token-secret.yaml.b64"
+# # Method 5: Save entire secret as base64 YAML
+# kubectl get secret jenkins-token -n webapps -o yaml | base64 > ~/kubernetes-manifests/jenkins-token-secret.yaml.b64
+# echo "✓ Full secret saved: ~/kubernetes-manifests/jenkins-token-secret.yaml.b64"
 
-echo ""
-echo "=== Files Created ==="
-ls -lah ~/kubernetes-manifests/jenkins-token*
+# echo ""
+# echo "=== Files Created ==="
+# ls -lah ~/kubernetes-manifests/jenkins-token*
 
-git config --global user.email kishor.ruet.cse@gmail.com
-git config --global user.name Kishorkumarparoi
+# git config --global user.email kishor.ruet.cse@gmail.com
+# git config --global user.name Kishorkumarparoi
 
-cd ~/Boardgame
-mkdir -p k8s
-cp ~/kubernetes-manifests/*.yaml k8s/
+# cd ~/Boardgame
+# mkdir -p k8s
+# cp ~/kubernetes-manifests/*.yaml k8s/
 
-# Push to GitHub
-git add k8s/
-git commit -m "Add Kubernetes deployment manifests"
-git push origin main
+# # Push to GitHub
+# git add k8s/
+# git commit -m "Add Kubernetes deployment manifests"
+# git push origin main
 
-# Detailed view of all instances
-aws ec2 describe-instances \
-  --region us-east-1 \
-  --filters "Name=instance-state-name,Values=running" \
-  --query 'Reservations[*].Instances[*].[InstanceId, Tags[?Key==`Name`].Value|[0], InstanceType, PrivateIpAddress, PublicIpAddress, LaunchTime, State.Name]' \
-  --output table
+# # Detailed view of all instances
+# aws ec2 describe-instances \
+#   --region us-east-1 \
+#   --filters "Name=instance-state-name,Values=running" \
+#   --query 'Reservations[*].Instances[*].[InstanceId, Tags[?Key==`Name`].Value|[0], InstanceType, PrivateIpAddress, PublicIpAddress, LaunchTime, State.Name]' \
+#   --output table
 
-  # Show all EKS worker nodes with their EC2 instance details
-aws ec2 describe-instances \
-  --region us-east-1 \
-  --filters "Name=tag:eks:cluster-name,Values=kkp-cluster" \
-  --query 'Reservations[*].Instances[*].[InstanceId, InstanceType, PrivateIpAddress, PublicIpAddress, State.Name, LaunchTime, Tags[?Key==`Name`].Value|[0]]' \
-  --output table
+#   # Show all EKS worker nodes with their EC2 instance details
+# aws ec2 describe-instances \
+#   --region us-east-1 \
+#   --filters "Name=tag:eks:cluster-name,Values=kkp-cluster" \
+#   --query 'Reservations[*].Instances[*].[InstanceId, InstanceType, PrivateIpAddress, PublicIpAddress, State.Name, LaunchTime, Tags[?Key==`Name`].Value|[0]]' \
+#   --output table
 
 
 

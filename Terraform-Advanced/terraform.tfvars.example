@@ -1,0 +1,63 @@
+# AWS Region
+aws_region = "us-east-1"
+
+# EKS Cluster Configuration
+cluster_name       = "kkp-cluster"
+kubernetes_version = "1.29"
+
+# VPC Configuration
+vpc_cidr_block = "10.0.0.0/16"
+subnet_count   = 2
+
+# Node Group Configuration
+node_group_min_size     = 2
+node_group_max_size     = 5
+node_group_desired_size = 2
+node_instance_types     = ["t3.medium"]
+node_disk_size          = 50
+
+# Node Labels
+node_group_labels = {
+  "node-type"     = "general"
+  "environment"   = "production"
+  "workload-type" = "applications"
+}
+
+# Node Taints (for blue-green deployment)
+# Uncomment to enable taints
+# node_group_taints = [
+#   {
+#     key    = "dedicated"
+#     value  = "blue"
+#     effect = "NoSchedule"
+#   }
+# ]
+
+# SSH Configuration
+ssh_key_name     = ""  # Leave empty to disable SSH, or provide key pair name
+enable_ssh_access = false
+ssh_allowed_cidr  = ["0.0.0.0/0"]
+
+# Cluster Endpoint Access
+cluster_endpoint_private_access        = true
+cluster_endpoint_public_access         = true
+cluster_endpoint_public_access_cidrs   = ["0.0.0.0/0"]
+
+# Logging
+cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+log_retention_days = 7
+
+# EKS Addons Versions
+vpc_cni_version   = "v1.15.0-eksbuild.1"
+coredns_version   = "v1.10.1-eksbuild.2"
+kube_proxy_version = "v1.29.0-eksbuild.1"
+
+# Common Tags
+common_tags = {
+  Terraform   = "true"
+  Environment = "production"
+  Project     = "Mega-Project"
+  ManagedBy   = "Terraform"
+  Team        = "DevOps"
+  Owner       = "Kishore Kumar Paroi"
+}

@@ -1,0 +1,46 @@
+# Production Configuration - Balanced Performance & Reliability
+# Expected cost: $150-180/month
+# NOT fully cost-optimized due to HA and logging requirements
+
+aws_region   = "us-east-1"
+cluster_name = "kkp-cluster"
+
+# VPC Configuration
+vpc_cidr_block = "10.0.0.0/16"
+subnet_count   = 3                       # 3 AZs for HA
+
+# Node Group - PRODUCTION READY
+node_group_min_size     = 3              # 3 nodes for HA
+node_group_desired_size = 3
+node_group_max_size     = 6
+node_instance_types     = ["t3.medium"]  # Standard size for production
+node_disk_size          = 50
+
+# Cost Optimization Features
+enable_spot_instances        = false     # Stable for production
+enable_cost_optimization     = false     # Not applicable
+use_smaller_instance_types   = false
+max_spot_price               = ""
+
+# Logging - FULL for compliance and debugging
+cluster_log_types      = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+enable_detailed_logging = true
+log_retention_days     = 30              # Keep logs for 1 month
+
+# Kubernetes Version
+kubernetes_version = "1.29"
+
+# SSH Access (controlled)
+enable_ssh_access  = true
+ssh_key_name       = "your-key-name"    # Replace with your key
+ssh_allowed_cidr   = ["10.0.0.0/8"]     # Restrict to VPN/corporate network
+
+# Tags
+common_tags = {
+  Terraform   = "true"
+  Environment = "production"
+  Project     = "Mega-Project"
+  ManagedBy   = "Terraform"
+  CostCenter  = "Operations"
+  Compliance  = "true"
+}
