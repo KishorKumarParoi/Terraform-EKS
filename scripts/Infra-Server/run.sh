@@ -85,7 +85,7 @@ fi
 
 echo "=== Navigating to Terraform Directory ==="
 git clone https://github.com/KishorKumarParoi/Terraform-EKS.git
-TERRAFORM_DIR="Terraform-EKS/Terraform"
+TERRAFORM_DIR="Terraform-EKS/Terraform-Advanced"
 
 if [ ! -d "$TERRAFORM_DIR" ]; then
   echo "❌ ERROR: Terraform directory not found at $TERRAFORM_DIR"
