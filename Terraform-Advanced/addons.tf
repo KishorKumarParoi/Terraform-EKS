@@ -107,40 +107,18 @@ resource "aws_iam_role_policy_attachment" "vpc_cni" {
 # Auto Scaling Configuration
 ################################################################################
 
-# Get the node group's Auto Scaling Group
-data "aws_autoscaling_groups" "node_group" {
-  depends_on = [aws_eks_node_group.kkp]
-
-  filter {
-    name   = "tag:eks:nodegroup-name"
-    values = [aws_eks_node_group.kkp.node_group_name]
-  }
-}
-
-# Auto Scaling Group Tags for cluster autoscaler discovery
-resource "aws_autoscaling_group_tag" "cluster_autoscaler_enabled" {
-  count = length(data.aws_autoscaling_groups.node_group.names)
-
-  autoscaling_group_name = data.aws_autoscaling_groups.node_group.names[count.index]
-
-  tag {
-    key                 = "k8s.io/cluster-autoscaler/${var.cluster_name}"
-    value               = "owned"
-    propagate_at_launch = false
-  }
-}
-
-resource "aws_autoscaling_group_tag" "cluster_autoscaler_discovery" {
-  count = length(data.aws_autoscaling_groups.node_group.names)
-
-  autoscaling_group_name = data.aws_autoscaling_groups.node_group.names[count.index]
-
-  tag {
-    key                 = "k8s.io/cluster-autoscaler/enabled"
-    value               = "true"
-    propagate_at_launch = false
-  }
-}
+# NOTE: Cluster autoscaler can auto-discover ASGs using the cluster name tag
+# that is automatically applied by EKS during node group creation.
+#
+# EKS automatically tags the ASG with:
+#   tag:eks:cluster-name = <cluster_name>
+#
+# Which allows cluster autoscaler to discover the ASG without explicit tagging.
+# The explicit ASG tags below are optional and require a two-step apply:
+#   Step 1: terraform apply -target=aws_eks_node_group.kkp
+#   Step 2: terraform apply (to apply ASG tags)
+#
+# For simplicity, we rely on the automatic EKS tagging.
 
 ################################################################################
 # EBS Encryption KMS Key
