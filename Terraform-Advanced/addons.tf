@@ -119,11 +119,9 @@ data "aws_autoscaling_groups" "node_group" {
 
 # Auto Scaling Group Tags for cluster autoscaler discovery
 resource "aws_autoscaling_group_tag" "cluster_autoscaler_enabled" {
-  for_each = toset(
-    [for asg in data.aws_autoscaling_groups.node_group.names : asg]
-  )
+  count = length(data.aws_autoscaling_groups.node_group.names)
 
-  autoscaling_group_name = each.value
+  autoscaling_group_name = data.aws_autoscaling_groups.node_group.names[count.index]
 
   tag {
     key                 = "k8s.io/cluster-autoscaler/${var.cluster_name}"
@@ -133,11 +131,9 @@ resource "aws_autoscaling_group_tag" "cluster_autoscaler_enabled" {
 }
 
 resource "aws_autoscaling_group_tag" "cluster_autoscaler_discovery" {
-  for_each = toset(
-    [for asg in data.aws_autoscaling_groups.node_group.names : asg]
-  )
+  count = length(data.aws_autoscaling_groups.node_group.names)
 
-  autoscaling_group_name = each.value
+  autoscaling_group_name = data.aws_autoscaling_groups.node_group.names[count.index]
 
   tag {
     key                 = "k8s.io/cluster-autoscaler/enabled"
