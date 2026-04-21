@@ -1,0 +1,75 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1571.vb_423c255d6d9">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@2.2277.v00573e73ddf1"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@2.2277.v00573e73ddf1">
+      <jobProperties/>
+      <triggers/>
+      <parameters/>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description>test</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>2</daysToKeep>
+        <numToKeep>2</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+        <removeLastBuild>false</removeLastBuild>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@4256.v991a_f1991c03">
+    <script>pipeline {
+    agent any
+    tools {
+        jdk &apos;jdk17&apos;
+        maven &apos;maven3&apos;
+    }
+    
+    stages {   
+         stage(&apos;Git Checkout&apos;) {
+            steps {
+              git branch: &apos;main&apos;, url: &apos;https://github.com/KishorKumarParoi/Boardgame.git&apos;
+            }
+        }
+        stage(&apos;Compile&apos;) {
+            steps {
+            sh &apos;mvn compile&apos;
+            }
+        }
+        
+        stage(&apos;Test&apos;) {
+            steps {
+                sh &apos;mvn test&apos;
+            }
+        }
+        
+        stage(&apos;Package&apos;) {
+            steps {
+                sh &apos;mvn clean package&apos;
+            }
+        }
+        
+         stage(&apos;deploy&apos;) {
+            steps {
+                deploy adapters: [tomcat9(alternativeDeploymentContext: &apos;&apos;, credentialsId: &apos;tomcat-server&apos;, path: &apos;&apos;, url: &apos;http://54.164.49.90:5000/&apos;)], contextPath: &apos;Planview&apos;, war: &apos;target/*.war&apos;
+            }
+        }
+        
+         stage(&apos;Hello&apos;) {
+            steps {
+                echo &quot;Hello World!&quot;
+            }
+        }
+        
+    }
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

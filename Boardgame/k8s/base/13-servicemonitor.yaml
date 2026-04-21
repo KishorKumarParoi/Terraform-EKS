@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: boardgame-monitor
+  namespace: webapps
+  labels:
+    app: boardgame
+spec:
+  selector:
+    matchLabels:
+      app: boardgame
+  endpoints:
+    - port: http
+      interval: 30s
+      path: /actuator/prometheus
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_version]
+          targetLabel: version

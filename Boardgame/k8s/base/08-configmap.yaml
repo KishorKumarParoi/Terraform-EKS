@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: boardgame-config
+  namespace: webapps
+  labels:
+    app: boardgame
+data:
+  spring.profiles.active: "prod"
+  logging.level.root: "INFO"
+  logging.level.com.javaproject: "DEBUG"
+  server.servlet.context-path: "/"
+  server.port: "8080"
+  server.shutdown: "graceful"
+  # Spring Boot management endpoints
+  management.endpoints.web.exposure.include: "health,metrics,prometheus,info"
+  management.endpoint.health.show-details: "when-authorized"
+  management.metrics.export.prometheus.enabled: "true"
+  # H2 Database (embedded)
+  spring.h2.console.enabled: "false"
+  spring.datasource.url: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE"
+  spring.datasource.driverClassName: "org.h2.Driver"
+  spring.jpa.database-platform: "org.hibernate.dialect.H2Dialect"
+  spring.jpa.show-sql: "false"
+  spring.jpa.hibernate.ddl-auto: "update"
+  # Performance tuning
+  server.tomcat.threads.max: "200"
+  server.tomcat.threads.min-spare: "10"
+  server.tomcat.max-connections: "10000"
+  server.tomcat.accept-count: "100"

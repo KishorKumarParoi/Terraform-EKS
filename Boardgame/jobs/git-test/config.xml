@@ -1,0 +1,64 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1571.vb_423c255d6d9">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@2.2277.v00573e73ddf1"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@2.2277.v00573e73ddf1">
+      <jobProperties/>
+      <triggers/>
+      <parameters>
+        <string>Git_Branch</string>
+      </parameters>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>Git_Branch</name>
+          <description>git branch name</description>
+          <defaultValue>main</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@4256.v991a_f1991c03">
+    <script>pipeline {
+    agent any
+    tools {
+        maven &quot;maven3&quot;
+        jdk &quot;jdk17&quot;
+    }
+    parameters{
+        string (name: &apos;Git_Branch&apos;, defaultValue: &apos;main&apos;, description: &apos;git branch name&apos;)
+    }
+
+    stages {
+        stage(&apos;Git Checkout&apos;){
+            steps {
+                git branch: &quot;${params.Git_Branch}&quot;, credentialsId: &apos;git-creds&apos;, url: &apos;https://github.com/KishorKumarParoi/Boardgame.git&apos;
+            }
+        }
+        
+        stage(&apos;Build&apos;) {
+            steps{
+                sh &apos;mvn package&apos;
+            }
+        }
+        
+        stage(&apos;Hello&apos;) {
+            steps {
+                echo &apos;Hello World&apos;
+            }
+        }
+    }
+}
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: boardgame-base
+
+namespace: webapps
+
+commonLabels:
+  app: boardgame
+  team: platform
+  managed-by: kustomize
+
+commonAnnotations:
+  doc: "Production-ready Boardgame deployment"
+
+resources:
+  - 01-namespace.yaml
+  - 02-serviceaccount.yaml
+  - 03-role.yaml
+  - 04-rolebinding.yaml
+  - 05-clusterrole.yaml
+  - 06-clusterrolebinding.yaml
+  - 07-secret.yaml
+  - 08-configmap.yaml
+  - 08-deploy.yaml
+  - 09-service.yaml
+  - 10-hpa.yaml
+  - 11-pdb.yaml
+  - 12-networkpolicy.yaml
+  - 13-servicemonitor.yaml
+
+replicas:
+  - name: boardgame-deployment
+    count: 3
+
+images:
+  - name: kishorkumarparoi/boardgame
+    newTag: v37
+
+# Patch all resources with common labels
+patchesStrategicMerge: []

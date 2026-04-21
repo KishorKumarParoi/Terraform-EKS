@@ -1,0 +1,77 @@
+---
+# Deny all ingress by default
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: boardgame-deny-all
+  namespace: webapps
+spec:
+  podSelector:
+    matchLabels:
+      app: boardgame
+  policyTypes:
+    - Ingress
+---
+# Allow ingress from Ingress Controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: boardgame-allow-ingress
+  namespace: webapps
+spec:
+  podSelector:
+    matchLabels:
+      app: boardgame
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    - from:
+        - podSelector:
+            matchLabels:
+              app: boardgame
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+# Allow egress to DNS and external services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: boardgame-allow-egress
+  namespace: webapps
+spec:
+  podSelector:
+    matchLabels:
+      app: boardgame
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app: boardgame
+      ports:
+        - protocol: TCP
+          port: 8080
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
