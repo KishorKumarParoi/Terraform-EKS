@@ -8,11 +8,16 @@ resource "aws_eks_addon" "ebs_csi" {
   addon_name                  = "aws-ebs-csi-driver"
   addon_version               = data.aws_eks_addon_version.ebs.version
   service_account_role_arn    = aws_iam_role.ebs_csi_driver.arn
-  resolve_conflicts_on_create = "OVERWRITE"
-  resolve_conflicts_on_update = "OVERWRITE"
+  resolve_conflicts_on_create = "NONE"
+  resolve_conflicts_on_update = "PRESERVE"
 
   tags = {
     Name = "${var.cluster_name}-ebs-csi"
+  }
+
+  timeouts {
+    create = "30m"
+    delete = "15m"
   }
 
   depends_on = [
@@ -25,13 +30,18 @@ resource "aws_eks_addon" "ebs_csi" {
 resource "aws_eks_addon" "vpc_cni" {
   cluster_name                = aws_eks_cluster.kkp.name
   addon_name                  = "vpc-cni"
-  addon_version               = var.vpc_cni_version
+  addon_version               = data.aws_eks_addon_version.vpc_cni.version
   service_account_role_arn    = aws_iam_role.vpc_cni.arn
-  resolve_conflicts_on_create = "OVERWRITE"
-  resolve_conflicts_on_update = "OVERWRITE"
+  resolve_conflicts_on_create = "NONE"
+  resolve_conflicts_on_update = "PRESERVE"
 
   tags = {
     Name = "${var.cluster_name}-vpc-cni"
+  }
+
+  timeouts {
+    create = "30m"
+    delete = "15m"
   }
 
   depends_on = [aws_eks_cluster.kkp]
@@ -41,12 +51,17 @@ resource "aws_eks_addon" "vpc_cni" {
 resource "aws_eks_addon" "coredns" {
   cluster_name                = aws_eks_cluster.kkp.name
   addon_name                  = "coredns"
-  addon_version               = var.coredns_version
-  resolve_conflicts_on_create = "OVERWRITE"
-  resolve_conflicts_on_update = "OVERWRITE"
+  addon_version               = data.aws_eks_addon_version.coredns.version
+  resolve_conflicts_on_create = "NONE"
+  resolve_conflicts_on_update = "PRESERVE"
 
   tags = {
     Name = "${var.cluster_name}-coredns"
+  }
+
+  timeouts {
+    create = "30m"
+    delete = "15m"
   }
 
   depends_on = [aws_eks_cluster.kkp]
@@ -56,12 +71,17 @@ resource "aws_eks_addon" "coredns" {
 resource "aws_eks_addon" "kube_proxy" {
   cluster_name                = aws_eks_cluster.kkp.name
   addon_name                  = "kube-proxy"
-  addon_version               = var.kube_proxy_version
-  resolve_conflicts_on_create = "OVERWRITE"
-  resolve_conflicts_on_update = "OVERWRITE"
+  addon_version               = data.aws_eks_addon_version.kube_proxy.version
+  resolve_conflicts_on_create = "NONE"
+  resolve_conflicts_on_update = "PRESERVE"
 
   tags = {
     Name = "${var.cluster_name}-kube-proxy"
+  }
+
+  timeouts {
+    create = "30m"
+    delete = "15m"
   }
 
   depends_on = [aws_eks_cluster.kkp]

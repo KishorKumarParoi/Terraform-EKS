@@ -41,9 +41,27 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# Get latest EBS CSI addon version
+# Get latest addon versions compatible with EKS cluster
 data "aws_eks_addon_version" "ebs" {
   addon_name         = "aws-ebs-csi-driver"
+  kubernetes_version = aws_eks_cluster.kkp.version
+  most_recent        = true
+}
+
+data "aws_eks_addon_version" "vpc_cni" {
+  addon_name         = "vpc-cni"
+  kubernetes_version = aws_eks_cluster.kkp.version
+  most_recent        = true
+}
+
+data "aws_eks_addon_version" "coredns" {
+  addon_name         = "coredns"
+  kubernetes_version = aws_eks_cluster.kkp.version
+  most_recent        = true
+}
+
+data "aws_eks_addon_version" "kube_proxy" {
+  addon_name         = "kube-proxy"
   kubernetes_version = aws_eks_cluster.kkp.version
   most_recent        = true
 }
@@ -341,12 +359,7 @@ resource "aws_eks_node_group" "kkp" {
     }
   }
 
-  labels = merge(
-    var.node_group_labels,
-    {
-      "kubernetes.io/cluster" = var.cluster_name
-    }
-  )
+  labels = var.node_group_labels
 
   tags = {
     Name = "${var.cluster_name}-node-group"
