@@ -1,0 +1,26 @@
+# Example Terraform Variables File
+# Copy this file to terraform.tfvars and update values for your environment
+
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Project Configuration
+project_name = "kkp"
+environment  = "dev"
+
+# VPC Configuration
+vpc_cidr_block = "10.0.0.0/16"
+
+# Subnet Configuration
+subnet_count       = 2
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+# SSH Key Configuration (optional - leave empty if not using)
+ssh_key_name = ""
+
+# Additional Tags
+additional_tags = {
+  Owner   = "DevOps-Team"
+  Contact = "devops@example.com"
+  CostCenter = "Engineering"
+}
