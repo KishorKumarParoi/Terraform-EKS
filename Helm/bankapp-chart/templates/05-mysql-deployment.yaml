@@ -1,0 +1,48 @@
+---
+# MySQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: { { .Values.mysql.name } }
+spec:
+  selector:
+    matchLabels:
+      app: { { .Values.mysql.name } }
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: { { .Values.mysql.name } }
+    spec:
+      containers:
+        - image: { { .Values.mysql.image } }
+          name: { { .Values.mysql.name } }
+          resources:
+            requests:
+              memory: "{{ .Values.mysql.resources.requests.memory }}"
+              cpu: "{{ .Values.mysql.resources.requests.cpu }}"
+            limits:
+              memory: "{{ .Values.mysql.resources.limits.memory }}"
+              cpu: "{{ .Values.mysql.resources.limits.cpu }}"
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: { { .Values.mysql.secretName } }
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: { { .Values.mysql.configName } }
+                  key: MYSQL_DATABASE
+          ports:
+            - containerPort: 3306
+              name: { { .Values.mysql.name } }
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: mysql-data
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: { { .Values.mysql.pvcName } }

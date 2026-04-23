@@ -1,0 +1,12 @@
+---
+# MySQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: { { .Values.mysql.serviceName } }
+spec:
+  ports:
+    - port: 3306
+      targetPort: 3306
+  selector:
+    app: { { .Values.mysql.name } }

@@ -1,0 +1,16 @@
+---
+# Storage Class for EBS
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: { { .Values.storageClass.name } }
+provisioner: ebs.csi.aws.com
+# ebs.csi.aws.con (AWS EBS CSI Driver)
+# pd.csi.storage.gke.io (GKE PD CSI Driver)
+# disk.csi.azure.com (Azure Disk CSI Driver)
+# nfs.csi.k8s.io (NFS CSI Driver)
+parameters:
+  type: { { .Values.storageClass.type } }
+  fsType: { { .Values.storageClass.fsType } }
+reclaimPolicy: { { .Values.storageClass.reclaimPolicy } }
+volumeBindingMode: { { .Values.storageClass.volumeBindingMode } }

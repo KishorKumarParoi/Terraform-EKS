@@ -1,0 +1,38 @@
+---
+# BankApp Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: { { .Values.bankapp.name } }
+spec:
+  replicas: { { .Values.bankapp.replicas } }
+  selector:
+    matchLabels:
+      app: { { .Values.bankapp.name } }
+  template:
+    metadata:
+      labels:
+        app: { { .Values.bankapp.name } }
+    spec:
+      containers:
+        - name: { { .Values.bankapp.name } }
+          image: { { .Values.bankapp.image } }
+          resources:
+            requests:
+              memory: "{{ .Values.bankapp.resources.requests.memory }}"
+              cpu: "{{ .Values.bankapp.resources.requests.cpu }}"
+            limits:
+              memory: "{{ .Values.bankapp.resources.limits.memory }}"
+              cpu: "{{ .Values.bankapp.resources.limits.cpu }}"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://{{ .Values.mysql.serviceName }}:3306/{{ .Values.mysql.database }}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: { { .Values.mysql.secretName } }
+                  key: MYSQL_ROOT_PASSWORD

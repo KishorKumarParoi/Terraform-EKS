@@ -1,0 +1,35 @@
+mysql:
+  name: mysql
+  secretName: mysql-secret
+  configName: mysql-config
+  pvcName: mysql-pvc
+  serviceName: mysql-service
+  image: mysql:8
+  database: bankappdb
+  rootPassword: "Test@123"
+  storageSize: 5Gi
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+bankapp:
+  name: bankapp
+  serviceName: bankapp-service
+  image: adijaiswal/bankapp:latest
+  replicas: 1
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+storageClass:
+  name: ebs-sc
+  type: gp3
+  fsType: ext4
+  reclaimPolicy: Retain
+  volumeBindingMode: WaitForFirstConsumer
