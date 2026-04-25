@@ -1,0 +1,18 @@
+alertmanager:
+enabled: true
+replicaCount: 1
+statefulSet:
+enabled: true
+persistentVolume:
+enabled: true
+existingClaim: alertmanager-pvc
+accessModes:
+- ReadWriteOnce
+size: 5Gi
+storageClass: manual
+server:
+replicaCount: 1
+statefulSet:
+enabled: false
+persistentVolume:
+enabled: false
