@@ -2,17 +2,21 @@
 
 A simplified, customizable Terraform configuration for AWS infrastructure deployment with VPC, Subnets, Internet Gateway, and security components.
 
-## Directory Structure
+## Directory Structure (now multi-cloud)
 
 ```
 Terraform-Simple/
-├── locals.tf                    # Local values and centralized configuration
-├── variables.tf                 # Variable definitions with validation
-├── main.tf                      # Main Terraform configuration
-├── output.tf                    # Output values
-├── terraform.tfvars             # Variable values (default/development)
-├── terraform.tfvars.example     # Example template for variable values
-└── README.md                    # This file
+├── clouds/
+│   ├── aws/        # AWS base infra (VPC, subnets, networking)
+│   ├── azure/      # Azure CI/CD resources and integration
+│   ├── gcp/        # GKE and Cloud Storage resources
+│   └── tencent/    # Tencent Cloud placeholders
+├── pipelines/      # Example CI pipeline YAMLs (Azure Pipelines)
+├── locals.tf
+├── variables.tf
+├── terraform.tfvars
+├── terraform.tfvars.example
+└── README.md
 ```
 
 ## Key Features
@@ -30,41 +34,24 @@ Terraform-Simple/
 - **Security Group**: For network access control
 - **Network ACL**: Additional layer of network security
 
-### Best Practices
-- Input validation on all variables
-- Consistent resource naming convention
-- Common tags applied to all resources
-- Environment-based configuration
-- Proper dependency management
-- Version constraints on Terraform and providers
+### Getting Started (multi-cloud)
 
-## Getting Started
+1) Keep your root `terraform.tfvars` for shared values (project, environment). Sensitive values should be stored securely.
 
-### 1. Configure Variables
-
-Copy the example template:
-```bash
-cp terraform.tfvars.example terraform.tfvars
-```
-
-Edit `terraform.tfvars` with your desired values:
-```hcl
-aws_region     = "us-east-1"
-project_name   = "my-project"
-environment    = "dev"  # or "staging", "prod"
-vpc_cidr_block = "10.0.0.0/16"
-subnet_count   = 2
-```
-
-### 2. Initialize Terraform
+2) For AWS infra, change to the AWS cloud folder and run Terraform there:
 
 ```bash
+cd Terraform-Simple/clouds/aws
 terraform init
+terraform plan -var-file="../../terraform.tfvars"
+terraform apply -var-file="../../terraform.tfvars"
 ```
 
-### 3. Plan the Deployment
+3) Use `Terraform-Simple/clouds/azure` to provision any Azure resources required for CI/CD (service principal, resource group). CI runs are provided in `pipelines/azure-pipelines.yml` as an example.
 
-```bash
+4) Add GKE and storage modules in `Terraform-Simple/clouds/gcp` to provision clusters and buckets. Use Workload Identity for secure access.
+
+5) Add Tencent Cloud resources in `Terraform-Simple/clouds/tencent` as needed.
 terraform plan
 ```
 

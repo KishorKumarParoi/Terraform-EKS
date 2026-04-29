@@ -1,0 +1,30 @@
+# Example Azure Pipelines YAML to run Terraform plan/app for AWS infra and to build CI artifacts
+# This is a minimal example — adjust to your organization and secure secrets via variable groups or Key Vault
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  TF_ROOT: 'Terraform-Simple/clouds/aws'
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.x'
+
+  - script: |
+      python -V
+    displayName: 'Show Python'
+
+  - script: |
+      cd $(TF_ROOT)
+      terraform init
+      terraform plan -var-file="../../terraform.tfvars"
+    displayName: 'Terraform Init & Plan'
+
+# Add steps to publish artifacts or trigger deployments to GKE/Azure as needed
