@@ -1,0 +1,7 @@
+azure_location      = "eastus"
+resource_group_name  = "rg-multicloud-terraform-staging"
+common_tags = {
+  Project   = "Multi-Cloud Terraform Advanced"
+  Environment = "staging"
+  Cloud     = "azure"
+}

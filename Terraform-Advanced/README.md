@@ -1,262 +1,61 @@
-# Terraform EKS Infrastructure
+# Multi-Cloud Terraform Advanced Platform
 
-Production-ready Terraform configuration for deploying a complete AWS EKS (Elastic Kubernetes Service) cluster with all necessary networking, security, and addon components.
+This folder is now structured as a CV-ready multi-cloud Terraform platform. The target design is intentionally broader than a single-cluster AWS deployment so it can demonstrate architecture, module design, environment separation, and operational thinking.
 
-## 🎯 Features
+## Target Cloud Strategy
 
-✅ **Complete EKS Setup**
-- Managed EKS cluster with latest Kubernetes
-- Auto-managed node groups
-- Support for multiple availability zones
-- KMS encryption for etcd secrets
+- **AWS** is the primary platform.
+- **Azure** is the secondary enterprise or DR platform.
+- Shared Terraform modules keep the project consistent across clouds.
+- CI/CD, policy checks, and observability live alongside the infrastructure code.
 
-✅ **Networking**
-- Custom VPC with configurable CIDR blocks
-- Public subnets across multiple AZs
-- Internet Gateway for external access
-- Route tables and security groups
-- Network policies support
+## What This Project Demonstrates
 
-✅ **Security**
-- IAM roles with least privilege
-- IRSA (IAM Roles for Service Accounts)
-- KMS key encryption for volumes
-- IMDSv2 enforcement
-- Security group restrictions
-- Optional SSH access control
+- Multi-cloud provider design
+- Reusable Terraform modules
+- Environment overlays for dev, staging, and prod
+- Security and policy guardrails
+- Kubernetes platform delivery on EKS and AKS
+- Monitoring, logging, and operational readiness
+- Pipeline-friendly structure for GitHub Actions or Jenkins
 
-✅ **Addons & Integrations**
-- EBS CSI Driver (persistent volumes)
-- VPC CNI (pod networking)
-- CoreDNS (DNS resolution)
-- kube-proxy (network proxy)
+## Repository Layout
 
-✅ **Observability**
-- CloudWatch logging
-- Auto Scaling group tags
-- Structured output values
-- Addon version management
-
-✅ **Production Ready**
-- Blue-green deployment support
-- Taints and labels configuration
-- Auto-scaling ready
-- High availability setup
-- Comprehensive documentation
-
-✅ **Cost Optimization** 💰
-- Spot instance support (60-70% EC2 savings)
-- Smaller instance type options (50% savings)
-- Minimal logging configuration (reduce CloudWatch costs)
-- Environment-specific configurations (dev, staging, prod)
-- Cost analysis and optimization guides included
-
-## 💰 Cost Estimates
-
-| Configuration | Monthly Cost | Use Case |
-|--------------|-------------|----------|
-| **Dev (Cost-Optimized)** | ~$40-50 | Development & Testing |
-| **Staging (Balanced)** | ~$80-100 | Staging & Pre-production |
-| **Production (Reliable)** | ~$150-180 | Production workloads |
-| **Current Setup** | ~$185 | Base configuration (2 t3.medium + 2 ELB) |
-
-**Potential Savings:** 35-75% with cost optimization enabled! See [COST_OPTIMIZATION.md](./COST_OPTIMIZATION.md) for details.
-
-## 📋 Prerequisites
-
-### Required
-- Terraform >= 1.0
-- AWS CLI >= 2.0
-- kubectl >= 1.24
-- AWS Account with appropriate IAM permissions
-
-### Verification
-```bash
-terraform --version
-aws --version
-kubectl version --client
-aws sts get-caller-identity
+```text
+Terraform-Advanced/
+├── clouds/
+│   ├── aws/
+│   └── azure/
+├── modules/
+│   ├── compute/
+│   ├── network/
+│   ├── observability/
+│   └── security/
+├── environments/
+│   ├── dev/
+│   ├── staging/
+│   └── prod/
+├── pipelines/
+├── policies/
+├── scripts/
+└── docs/
 ```
 
-## 🚀 Quick Start
+## How To Use
 
-### 1. Initialize
-```bash
-cd Terraform/
-terraform init
-terraform validate
-```
+1. Start from the cloud entrypoint you want under `clouds/`.
+2. Extend the relevant module under `modules/`.
+3. Add environment-specific values under `environments/`.
+4. Run validation from `scripts/validate.sh`.
+5. Add CI/CD and promotion rules through `pipelines/`.
 
-### 2. Configure
-```bash
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your values
-```
+## Suggested Resume Line
 
-### 3. Plan
-```bash
-terraform plan -out=tfplan
-terraform show tfplan
-```
+> Built a multi-cloud Terraform platform with AWS and Azure entrypoints, reusable modules, validation tooling, policy checks, and production-style documentation.
 
-### 4. Deploy
-```bash
-terraform apply tfplan
-# Takes approximately 10-15 minutes
+## Notes
 
-# Configure kubectl
-aws eks update-kubeconfig --region us-east-1 --name kkp-cluster
-kubectl cluster-info
-```
-
-### Using Make
-```bash
-# Check prerequisites
-make check
-
-# Run all setup steps
-make all
-
-# Or individual steps
-make init
-make validate
-make plan
-make apply
-
-# View outputs
-make output
-
-# Check cluster status
-make status
-make nodes
-```
-
-## 📁 File Structure
-
-| File | Purpose |
-|------|---------|
-| `main.tf` | VPC, EKS cluster, node group, and security |
-| `addons.tf` | EKS addons (EBS CSI, VPC CNI, CoreDNS, kube-proxy) |
-| `variable.tf` | Input variables with validation |
-| `output.tf` | Output values for cluster info |
-| `locals.tf` | Computed local values |
-| `versions.tf` | Terraform version and providers |
-| `terraform.tfvars.example` | Example variable values |
-| `TERRAFORM_GUIDE.md` | Comprehensive usage guide |
-| `Makefile` | Convenient command shortcuts |
-| `.gitignore` | Git ignore rules |
-
-## 🔧 Configuration
-
-### Key Variables
-
-```hcl
-# AWS Region
-aws_region = "us-east-1"
-
-# Cluster Configuration
-cluster_name       = "kkp-cluster"
-kubernetes_version = "1.29"
-
-# VPC Configuration
-vpc_cidr_block = "10.0.0.0/16"
-subnet_count   = 2
-
-# Node Group
-node_group_min_size     = 2
-node_group_max_size     = 5
-node_group_desired_size = 2
-node_instance_types     = ["t3.medium"]
-
-# Security
-enable_ssh_access = false
-```
-
-See `terraform.tfvars.example` and `TERRAFORM_GUIDE.md` for all options.
-
-## 📊 Architecture
-
-```
-AWS EKS Cluster (kkp-cluster)
-├── Control Plane
-│   ├── API Server (KMS encrypted)
-│   ├── etcd (KMS encrypted)
-│   └── CloudWatch Logs
-├── VPC (10.0.0.0/16)
-│   ├── Subnet 1 (10.0.0.0/24) - us-east-1a
-│   ├── Subnet 2 (10.0.1.0/24) - us-east-1b
-│   ├── Internet Gateway
-│   └── Route Tables
-├── Node Group (Managed)
-│   ├── Min: 2 nodes
-│   ├── Max: 5 nodes
-│   └── Instance Type: t3.medium
-├── Addons
-│   ├── EBS CSI Driver
-│   ├── VPC CNI
-│   ├── CoreDNS
-│   └── kube-proxy
-└── Security
-    ├── KMS Keys
-    ├── IAM Roles
-    ├── Security Groups
-    └── OIDC Provider (IRSA)
-```
-
-## 🔐 Security Features
-
-- **Encryption**: KMS encryption for etcd secrets
-- **Network**: Security groups with minimal required access
-- **IAM**: Least privilege roles and policies
-- **IRSA**: Pod-level IAM authentication
-- **Access**: IMDSv2 enforcement
-- **Logging**: CloudWatch audit logging
-
-## 📈 Scaling & Performance
-
-- **Auto Scaling**: Configured for Cluster Autoscaler
-- **Node Groups**: Configurable min/max/desired size
-- **Blue-Green**: Taints and labels for deployments
-- **Cost**: Choose appropriate instance types
-- **Multi-AZ**: High availability setup
-
-## 🔄 Common Operations
-
-### Update Kubernetes Version
-```bash
-# In terraform.tfvars
-kubernetes_version = "1.30"
-
-terraform plan
-terraform apply
-```
-
-### Scale Cluster
-```bash
-# In terraform.tfvars
-node_group_desired_size = 5
-
-terraform apply
-```
-
-### Destroy Cluster
-```bash
-terraform destroy
-# WARNING: This deletes all infrastructure!
-```
-
-### View Outputs
-```bash
-terraform output
-terraform output cluster_endpoint
-terraform output configure_kubectl
-```
-
-## 📖 Documentation
-
-- **[TERRAFORM_GUIDE.md](TERRAFORM_GUIDE.md)** - Comprehensive guide with examples
-- **[AWS EKS Docs](https://docs.aws.amazon.com/eks/)** - Official AWS documentation
-- **[Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest)** - Provider documentation
+The older AWS-only implementation that already exists in this folder is still useful as a reference, but the new structure above is the target layout for the advanced multicloud version.
 
 ## 🛠 Useful Commands
 

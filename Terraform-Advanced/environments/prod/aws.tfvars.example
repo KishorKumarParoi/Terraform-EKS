@@ -1,0 +1,7 @@
+aws_region   = "us-east-1"
+cluster_name  = "multicloud-aws-prod"
+common_tags = {
+  Project   = "Multi-Cloud Terraform Advanced"
+  Environment = "prod"
+  Cloud     = "aws"
+}
