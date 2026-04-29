@@ -27,7 +27,7 @@ enable_detailed_logging = false
 log_retention_days     = 7               # Keep logs for 1 week only
 
 # Kubernetes Version (keep stable)
-kubernetes_version = "1.29"
+kubernetes_version = "1.35"
 
 # SSH Access (optional)
 enable_ssh_access  = false               # Disable for security

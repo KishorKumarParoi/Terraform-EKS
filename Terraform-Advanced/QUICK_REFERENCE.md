@@ -32,7 +32,7 @@ Node SG (kkp-node-sg)
 
 ```
 Cluster Name:     kkp-cluster
-Kubernetes:       1.29
+Kubernetes:       1.35
 Control Plane:    Managed by AWS (3 nodes, multi-AZ)
 Cost:             $0.10/hour = ~$73/month
 Encryption:       KMS (etcd secrets)

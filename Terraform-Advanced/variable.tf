@@ -46,11 +46,11 @@ variable "cluster_name" {
 variable "kubernetes_version" {
   description = "Kubernetes version for EKS cluster"
   type        = string
-  default     = "1.29"
+  default     = "1.35"
 
   validation {
     condition     = can(regex("^[0-9]+\\.[0-9]+$", var.kubernetes_version))
-    error_message = "Kubernetes version must be in format X.Y (e.g., 1.29)"
+    error_message = "Kubernetes version must be in format X.Y (e.g., 1.35)"
   }
 }
 
@@ -269,5 +269,5 @@ variable "coredns_version" {
 variable "kube_proxy_version" {
   description = "Version of kube-proxy addon"
   type        = string
-  default     = "v1.29.0-eksbuild.1"
+  default     = "v1.35.0-eksbuild.1"
 }

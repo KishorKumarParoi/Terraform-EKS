@@ -234,7 +234,7 @@ resource "aws_security_group" "kkp_node_sg" {
 resource "aws_eks_cluster" "kkp" {
   name     = var.cluster_name              # "kkp-cluster"
   role_arn = aws_iam_role.kkp_cluster_role.arn
-  version  = var.kubernetes_version        # "1.29"
+  version  = var.kubernetes_version        # "1.35"
 
   vpc_config {
     subnet_ids              = aws_subnet.kkp_subnet[*].id
@@ -676,7 +676,7 @@ aws_region = "us-east-1"
 
 # Cluster
 cluster_name       = "kkp-cluster"
-kubernetes_version = "1.29"
+kubernetes_version = "1.35"
 
 # VPC
 vpc_cidr_block = "10.0.0.0/16"

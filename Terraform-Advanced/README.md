@@ -110,7 +110,7 @@ aws eks describe-nodegroup \
 ```bash
 aws eks describe-addon-versions \
   --addon-name aws-ebs-csi-driver \
-  --kubernetes-version 1.29
+  --kubernetes-version 1.35
 ```
 
 See [TERRAFORM_GUIDE.md](TERRAFORM_GUIDE.md#troubleshooting) for more troubleshooting steps.
@@ -195,4 +195,4 @@ MIT License - See [LICENSE](../LICENSE)
 **Last Updated**: April 2026
 **Terraform Version**: >= 1.0
 **AWS Provider**: ~> 5.0
-**Kubernetes**: 1.29+
+**Kubernetes**: 1.35+

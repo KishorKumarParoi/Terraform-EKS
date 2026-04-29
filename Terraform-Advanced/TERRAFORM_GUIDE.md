@@ -153,7 +153,7 @@ kubectl get nodes
 |----------|---------|-------------|
 | `aws_region` | `us-east-1` | AWS region for resources |
 | `cluster_name` | `kkp-cluster` | Name of EKS cluster |
-| `kubernetes_version` | `1.29` | Kubernetes version |
+| `kubernetes_version` | `1.35` | Kubernetes version |
 | `vpc_cidr_block` | `10.0.0.0/16` | VPC CIDR block |
 | `node_group_min_size` | `2` | Minimum worker nodes |
 | `node_group_max_size` | `5` | Maximum worker nodes |
@@ -165,7 +165,7 @@ kubectl get nodes
 cat > terraform.tfvars << EOF
 aws_region = "us-east-1"
 cluster_name = "my-cluster"
-kubernetes_version = "1.29"
+kubernetes_version = "1.35"
 vpc_cidr_block = "10.0.0.0/16"
 
 node_group_min_size = 2
@@ -297,7 +297,7 @@ terraform init
 # Check addon prerequisites
 aws eks describe-addon-versions \
   --addon-name aws-ebs-csi-driver \
-  --kubernetes-version 1.29
+  --kubernetes-version 1.35
 ```
 
 **Issue**: Node group scaling fails

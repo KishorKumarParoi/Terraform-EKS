@@ -137,7 +137,7 @@ Key variables in `terraform.tfvars`:
 ```hcl
 aws_region            = "us-east-1"
 cluster_name          = "kkp-cluster"
-kubernetes_version    = "1.29"
+kubernetes_version    = "1.35"
 vpc_cidr_block        = "10.0.0.0/16"
 subnet_count          = 2
 node_group_min_size   = 2
@@ -303,4 +303,4 @@ See [TERRAFORM_GUIDE.md](TERRAFORM_GUIDE.md#troubleshooting) for more help.
 **Last Updated**: April 21, 2026
 **Terraform Version**: >= 1.0
 **AWS Provider**: ~> 5.0
-**Kubernetes**: 1.29+
+**Kubernetes**: 1.35+

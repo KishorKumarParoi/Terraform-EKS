@@ -3,7 +3,7 @@ aws_region = "us-east-1"
 
 # EKS Cluster Configuration
 cluster_name       = "kkp-cluster"
-kubernetes_version = "1.29"
+kubernetes_version = "1.35"
 
 # VPC Configuration
 vpc_cidr_block = "10.0.0.0/16"
@@ -50,7 +50,7 @@ log_retention_days = 7
 # EKS Addons Versions
 vpc_cni_version   = "v1.15.0-eksbuild.1"
 coredns_version   = "v1.10.1-eksbuild.2"
-kube_proxy_version = "v1.29.0-eksbuild.1"
+kube_proxy_version = "v1.35.0-eksbuild.1"
 
 # Common Tags
 common_tags = {
