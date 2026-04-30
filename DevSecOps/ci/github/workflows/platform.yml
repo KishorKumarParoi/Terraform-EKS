@@ -1,0 +1,33 @@
+name: DevSecOps Platform
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Validate compose and scripts
+        run: |
+          bash -n deploy-oneclick.sh
+          bash -n scripts/bootstrap.sh
+          docker compose config > /dev/null
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+  sonar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: SonarQube placeholder
+        run: echo "Configure SONAR_HOST_URL and SONAR_TOKEN secrets"

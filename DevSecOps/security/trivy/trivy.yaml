@@ -1,0 +1,11 @@
+scan:
+  skip-dirs:
+    - .git
+    - .terraform
+  security-checks:
+    - vuln
+    - config
+vulnerability:
+  severity:
+    - HIGH
+    - CRITICAL

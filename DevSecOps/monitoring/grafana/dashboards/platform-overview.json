@@ -1,0 +1,41 @@
+{
+    "title": "DevSecOps Overview",
+    "uid": "devsecops-overview",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "15s",
+    "panels": [
+        {
+            "type": "stat",
+            "title": "Platform Up",
+            "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 12,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "up",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "type": "stat",
+            "title": "Targets Healthy",
+            "gridPos": {
+                "x": 12,
+                "y": 0,
+                "w": 12,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "sum(up)",
+                    "refId": "A"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+pipeline {
+  agent any
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
+    }
+    stage('Validate') {
+      steps {
+        sh 'bash -n deploy-oneclick.sh'
+        sh 'docker compose config > /dev/null'
+      }
+    }
+    stage('Security Scan') {
+      steps {
+        sh 'trivy fs --severity HIGH,CRITICAL --exit-code 1 .'
+      }
+    }
+  }
+}
