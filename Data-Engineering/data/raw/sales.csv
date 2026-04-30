@@ -1,0 +1,10 @@
+order_date,region,product,units,unit_price
+2026-04-01,us-east,ingest-api,12,18.50
+2026-04-01,us-east,warehouse,4,42.00
+2026-04-01,eu-west,transform-job,7,25.00
+2026-04-02,us-east,serving-api,11,19.25
+2026-04-02,eu-west,monitoring-agent,5,33.10
+2026-04-02,ap-south,etl-batch,9,27.40
+2026-04-03,us-east,warehouse,8,41.75
+2026-04-03,eu-west,serving-api,6,21.20
+2026-04-03,ap-south,monitoring-agent,10,29.90
