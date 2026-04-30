@@ -1,0 +1,6 @@
+project_name   = "advanced-devops"
+environment    = "dev"
+aws_region     = "us-east-1"
+azure_location = "eastus"
+gcp_project    = "your-gcp-project"
+gcp_region     = "us-central1"

@@ -1,0 +1,55 @@
+name: Advanced DevOps Pipeline
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Fmt Check
+        run: terraform -chdir=terraform/live/dev fmt -check
+
+      - name: Terraform Init
+        run: terraform -chdir=terraform/live/dev init -backend=false
+
+      - name: Terraform Validate
+        run: terraform -chdir=terraform/live/dev validate
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trivy FS Scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+      - name: SonarQube Scan (template)
+        run: |
+          echo "Configure SONAR_HOST_URL and SONAR_TOKEN secrets to enable scanning"
+
+  gitops-dryrun:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Kubernetes manifests
+        run: |
+          kubectl kustomize gitops/apps/demo-app > /tmp/rendered.yaml
+          test -s /tmp/rendered.yaml

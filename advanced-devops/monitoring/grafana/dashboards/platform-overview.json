@@ -1,0 +1,25 @@
+{
+    "title": "Advanced DevOps Overview",
+    "uid": "adv-devops-overview",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "15s",
+    "panels": [
+        {
+            "type": "timeseries",
+            "title": "Prometheus Target Scrapes",
+            "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 24,
+                "h": 10
+            },
+            "targets": [
+                {
+                    "expr": "up",
+                    "refId": "A"
+                }
+            ]
+        }
+    ]
+}

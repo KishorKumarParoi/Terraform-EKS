@@ -1,0 +1,30 @@
+pipeline {
+  agent any
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Terraform Validate') {
+      steps {
+        sh 'terraform -chdir=terraform/live/dev init -backend=false'
+        sh 'terraform -chdir=terraform/live/dev validate'
+      }
+    }
+
+    stage('Security Scan') {
+      steps {
+        sh 'trivy fs --severity HIGH,CRITICAL --exit-code 1 .'
+      }
+    }
+
+    stage('GitOps Lint') {
+      steps {
+        sh 'kubectl kustomize gitops/apps/demo-app > /tmp/demo-app.yaml'
+      }
+    }
+  }
+}
